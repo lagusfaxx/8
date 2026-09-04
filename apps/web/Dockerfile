@@ -33,6 +33,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NODE_PATH=/app/apps/web/node_modules
 ENV PORT=3000
+# Next standalone binds to process.env.HOSTNAME, and Docker sets HOSTNAME to
+# the container id — which resolves to the container's IPv6 address only.
+# The reverse proxy reaches the container over IPv4, so bind all interfaces.
+ENV HOSTNAME=0.0.0.0
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=build /app/apps/web/.next/standalone ./
