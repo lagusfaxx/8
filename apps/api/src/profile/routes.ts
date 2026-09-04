@@ -1,0 +1,1336 @@
+import { Router } from "express";
+import multer from "multer";
+import path from "path";
+import fs from "node:fs/promises";
+import { prisma } from "../db";
+import { Prisma } from "@prisma/client";
+import { requireAuth } from "../auth/middleware";
+import { config } from "../config";
+import { LocalStorageProvider } from "../storage/localStorageProvider";
+import { isBusinessPlanActive } from "../lib/subscriptions";
+import { validateUploadedFile } from "../lib/uploads";
+import { asyncHandler } from "../lib/asyncHandler";
+import { PROFESSIONAL_PHONE_REGEX, samePhone } from "./phoneChange";
+import {
+  displayNameError,
+  normalizeDisplayName,
+  sameName,
+} from "./nameChange";
+import { parseAndNormalizeTags } from "../lib/tags";
+import { optimizeUploadedImage, ImageOptimizationError } from "../lib/imageOptimizer";
+import { obfuscateLocation } from "../lib/locationPrivacy";
+import { emitAdminEvent } from "../lib/adminEvents";
+import {
+  createProfessionalForumThread,
+  geocodeAddress,
+} from "../auth/registerHelpers";
+import { MIN_PROFESSIONAL_GALLERY_PHOTOS } from "../auth/createProfessional";
+
+const ADMIN_ONLY_PROFILE_TAGS = new Set(["premium", "verificada", "profesional con examenes"]);
+import {
+  compareProfessionalLevelDesc,
+  resolveProfessionalLevel,
+} from "../lib/professionalLevel";
+
+export const profileRouter = Router();
+
+const storageProvider = new LocalStorageProvider({
+  baseDir: config.storageDir,
+  publicPathPrefix: `${config.apiUrl.replace(/\/$/, "")}/uploads`,
+});
+
+const storage = multer.diskStorage({
+  destination: async (_req, _file, cb) => {
+    await storageProvider.ensureBaseDir();
+    cb(null, config.storageDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || "";
+    const safeBase = path
+      .basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9_-]/g, "");
+    const name = `${Date.now()}-${safeBase}${ext}`;
+    cb(null, name);
+  },
+});
+
+const uploadImage = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = (file.mimetype || "").toLowerCase().startsWith("image/");
+    if (!ok) return cb(new Error("INVALID_FILE_TYPE"));
+    return cb(null, true);
+  },
+});
+
+const uploadMedia = multer({
+  storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+});
+
+/**
+ * Translate the low-level errors thrown by validateUploadedFile and the
+ * image optimizer into a stable error code + Spanish message the FE can
+ * show as-is. Keeps every upload endpoint consistent and avoids 500s that
+ * the FE would otherwise silently swallow.
+ */
+function describeUploadFailure(err: unknown): { code: string; message: string } {
+  const raw =
+    err instanceof ImageOptimizationError
+      ? err.code
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  switch (raw) {
+    case "FILE_TOO_LARGE":
+      return {
+        code: "FILE_TOO_LARGE",
+        message:
+          "El archivo supera el tamaño permitido (10 MB para imágenes, 100 MB para videos).",
+      };
+    case "INVALID_FILE_TYPE":
+      return {
+        code: "INVALID_FILE_TYPE",
+        message: "Formato no permitido. Usa JPG, PNG, WebP o MP4/MOV.",
+      };
+    case "UNSUPPORTED_VIDEO_FORMAT":
+      return {
+        code: "UNSUPPORTED_VIDEO_FORMAT",
+        message: "El video debe estar en MP4 o MOV.",
+      };
+    case "IMAGE_OPTIMIZATION_FAILED":
+      return {
+        code: "IMAGE_OPTIMIZATION_FAILED",
+        message:
+          "No pudimos procesar esta imagen. Verifica que no esté dañada e inténtalo de nuevo.",
+      };
+    default:
+      return {
+        code: "UPLOAD_FAILED",
+        message: "No se pudo subir este archivo.",
+      };
+  }
+}
+
+async function discardUploadedFile(file: Express.Multer.File | undefined) {
+  if (!file?.path) return;
+  await fs.unlink(file.path).catch(() => {});
+}
+
+const AVAILABLE_WINDOW_MS = 5 * 60 * 1000;
+
+function computeAvailableNow(lastSeen: Date | null | undefined) {
+  if (!lastSeen) return false;
+  return Date.now() - lastSeen.getTime() <= AVAILABLE_WINDOW_MS;
+}
+
+function computeAge(birthdate: Date | null | undefined) {
+  if (!birthdate) return null;
+  const now = new Date();
+  let age = now.getFullYear() - birthdate.getFullYear();
+  const m = now.getMonth() - birthdate.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < birthdate.getDate())) age -= 1;
+  return age >= 18 ? age : null;
+}
+
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const toRad = (n: number) => (n * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function compareByAvailabilityAndLastSeen(
+  a: { availableNow: boolean; lastActiveAt: string | null },
+  b: { availableNow: boolean; lastActiveAt: string | null },
+) {
+  if (a.availableNow !== b.availableNow) {
+    return Number(b.availableNow) - Number(a.availableNow);
+  }
+  return (
+    (Date.parse(b.lastActiveAt || "") || 0) -
+    (Date.parse(a.lastActiveAt || "") || 0)
+  );
+}
+
+profileRouter.get(
+  "/profiles/discover",
+  asyncHandler(async (req, res) => {
+    let sort = typeof req.query.sort === "string" ? req.query.sort : "featured";
+    const radiusKm =
+      req.query.radiusKm != null ? Number(req.query.radiusKm) : null;
+    const limit =
+      req.query.limit != null
+        ? Math.min(Number(req.query.limit) || 24, 120)
+        : 24;
+    const lat = req.query.lat != null ? Number(req.query.lat) : null;
+    const lng = req.query.lng != null ? Number(req.query.lng) : null;
+    const genderParam =
+      typeof req.query.gender === "string" ? req.query.gender.toUpperCase() : "";
+    const genderFilter =
+      genderParam === "MALE" || genderParam === "FEMALE" || genderParam === "OTHER"
+        ? (genderParam as "MALE" | "FEMALE" | "OTHER")
+        : null;
+
+    // Fallback: if sort=near but no location provided, use availableNow instead
+    if (sort === "near" && (lat === null || lng === null)) {
+      sort = "featured";
+    }
+
+    const profiles = await prisma.user.findMany({
+      where: {
+        profileType: "PROFESSIONAL",
+        isActive: true,
+        ...(genderFilter === "FEMALE"
+          ? { OR: [{ gender: "FEMALE" }, { gender: null }] }
+          : genderFilter
+            ? { gender: genderFilter }
+            : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: Math.max(limit * 3, 48),
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        coverUrl: true,
+        birthdate: true,
+        latitude: true,
+        longitude: true,
+        lastSeen: true,
+        heightCm: true,
+        serviceStyleTags: true,
+        profileType: true,
+        membershipExpiresAt: true,
+        shopTrialEndsAt: true,
+        createdAt: true,
+        isActive: true,
+        isOnline: true,
+        completedServices: true,
+        profileViews: true,
+        baseRate: true,
+        profileTags: true,
+        serviceTags: true,
+        serviceCategory: true,
+        tier: true,
+      },
+    });
+
+    const enriched = profiles
+      .filter((p) => isBusinessPlanActive(p))
+      .map((p) => {
+        const distanceKm =
+          lat !== null &&
+          lng !== null &&
+          p.latitude !== null &&
+          p.longitude !== null
+            ? haversine(lat, lng, p.latitude, p.longitude)
+            : null;
+        const hasActiveSession =
+          Boolean(p.isOnline) && computeAvailableNow(p.lastSeen);
+
+        return {
+          id: p.id,
+          username: p.username,
+          displayName: p.displayName || p.username,
+          age: computeAge(p.birthdate),
+          avatarUrl: p.avatarUrl,
+          coverUrl: p.coverUrl,
+          lat: p.latitude,
+          lng: p.longitude,
+          distanceKm,
+          availableNow: hasActiveSession,
+          isActive: p.isActive,
+          profileType: p.profileType,
+          userLevel: resolveProfessionalLevel({
+            baseRate: p.baseRate,
+            profileViews: p.profileViews,
+            lastSeen: p.lastSeen,
+            completedServices: p.completedServices,
+            adminTier: p.tier,
+          }),
+          completedServices: p.completedServices,
+          profileViews: p.profileViews,
+          lastActiveAt: p.lastSeen ? p.lastSeen.toISOString() : null,
+          heightCm: p.heightCm,
+          serviceStyleTags: p.serviceStyleTags,
+          normalizedTags: parseAndNormalizeTags(p.serviceStyleTags),
+          profileTags: (p as any).profileTags ?? [],
+          serviceTags: (p as any).serviceTags ?? [],
+          serviceCategory: (p as any).serviceCategory ?? null,
+          createdAt: p.createdAt,
+        };
+      })
+      .filter((p) =>
+        radiusKm !== null && p.distanceKm !== null
+          ? p.distanceKm <= radiusKm
+          : true,
+      );
+
+    if (sort === "near") {
+      const near = enriched
+        .filter((p) => p.distanceKm !== null)
+        .sort((a, b) => {
+          // Distance first — closest profiles always on top
+          const distCmp = (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9);
+          if (Math.abs(distCmp) > 0.5) return distCmp;
+          // Tie-break by availability
+          const availabilityCmp = compareByAvailabilityAndLastSeen(a, b);
+          if (availabilityCmp !== 0) return availabilityCmp;
+          return 0;
+        });
+      return res.json({
+        profiles: near.slice(0, limit).map(({ createdAt, ...row }) => row),
+      });
+    } else if (sort === "new") {
+      const sevenDaysAgo = Date.now() - 15 * 24 * 60 * 60 * 1000;
+      const recentOnly = enriched.filter(
+        (p) => new Date(p.createdAt).getTime() >= sevenDaysAgo,
+      );
+      recentOnly.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+      return res.json({
+        profiles: recentOnly
+          .slice(0, limit)
+          .map(({ createdAt, ...row }) => row),
+      });
+    } else if (sort === "availableNow") {
+      const available = [...enriched];
+      available.sort((a, b) => {
+        const availabilityCmp = compareByAvailabilityAndLastSeen(a, b);
+        if (availabilityCmp !== 0) return availabilityCmp;
+        const levelCmp = compareProfessionalLevelDesc(a.userLevel, b.userLevel);
+        if (levelCmp !== 0) return levelCmp;
+        return (b.profileViews || 0) - (a.profileViews || 0);
+      });
+      return res.json({
+        profiles: available.slice(0, limit).map(({ createdAt, ...row }) => row),
+      });
+    } else {
+      const featured = [...enriched];
+      featured.sort((a, b) => {
+        const availabilityCmp = compareByAvailabilityAndLastSeen(a, b);
+        if (availabilityCmp !== 0) return availabilityCmp;
+        const levelCmp = compareProfessionalLevelDesc(a.userLevel, b.userLevel);
+        if (levelCmp !== 0) return levelCmp;
+        if (a.isActive !== b.isActive)
+          return Number(b.isActive) - Number(a.isActive);
+        return (b.profileViews || 0) - (a.profileViews || 0);
+      });
+      return res.json({
+        profiles: featured.slice(0, limit).map(({ createdAt, ...row }) => row),
+      });
+    }
+
+    const payload = enriched
+      .slice(0, limit)
+      .map(({ createdAt, ...row }) => row);
+
+    return res.json({ profiles: payload });
+  }),
+);
+
+profileRouter.get(
+  "/profiles",
+  asyncHandler(async (req, res) => {
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const types =
+      typeof req.query.types === "string"
+        ? req.query.types.split(",").map((t) => t.trim())
+        : [];
+    const where: any = {
+      profileType: {
+        in: types.length ? types : ["CREATOR", "PROFESSIONAL", "SHOP"],
+      },
+    };
+    if (q) {
+      where.OR = [
+        { username: { contains: q, mode: "insensitive" } },
+        { displayName: { contains: q, mode: "insensitive" } },
+        { serviceCategory: { contains: q, mode: "insensitive" } },
+        { city: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const profiles = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        avatarUrl: true,
+        coverUrl: true,
+        bio: true,
+        city: true,
+        address: true,
+        serviceCategory: true,
+        serviceDescription: true,
+        profileType: true,
+        subscriptionPrice: true,
+        membershipExpiresAt: true,
+        shopTrialEndsAt: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+
+    const filtered = profiles.filter((p) => isBusinessPlanActive(p));
+
+    return res.json({ profiles: filtered });
+  }),
+);
+
+profileRouter.get(
+  "/profiles/:username",
+  asyncHandler(async (req, res) => {
+    const username = req.params.username;
+    const viewerId = req.session.userId || null;
+    const profile = await prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        displayName: true,
+        username: true,
+        avatarUrl: true,
+        coverUrl: true,
+        bio: true,
+        city: true,
+        address: true,
+        serviceCategory: true,
+        serviceDescription: true,
+        profileType: true,
+        subscriptionPrice: true,
+        membershipExpiresAt: true,
+        shopTrialEndsAt: true,
+        latitude: true,
+        longitude: true,
+      },
+    });
+    if (!profile) return res.status(404).json({ error: "NOT_FOUND" });
+    const isOwner = viewerId === profile.id;
+    if (!isOwner && !isBusinessPlanActive(profile)) {
+      return res.status(403).json({ error: "PLAN_EXPIRED" });
+    }
+
+    const posts = await prisma.post.findMany({
+      where: { authorId: profile.id },
+      orderBy: { createdAt: "desc" },
+      include: { media: true },
+    });
+
+    const subscription = viewerId
+      ? await prisma.profileSubscription.findUnique({
+          where: {
+            subscriberId_profileId: {
+              subscriberId: viewerId,
+              profileId: profile.id,
+            },
+          },
+        })
+      : null;
+    const isSubscribed =
+      (!!subscription &&
+        subscription.status === "ACTIVE" &&
+        subscription.expiresAt.getTime() > Date.now()) ||
+      (viewerId && viewerId === profile.id);
+
+    const payload = posts.map((p) => {
+      const paywalled = !p.isPublic && !isSubscribed;
+      return {
+        id: p.id,
+        title: p.title,
+        body: paywalled ? p.body.slice(0, 220) + "…" : p.body,
+        createdAt: p.createdAt.toISOString(),
+        isPublic: p.isPublic,
+        media: paywalled
+          ? []
+          : p.media.map((m) => ({ id: m.id, type: m.type, url: m.url })),
+        preview: p.media[0]
+          ? { id: p.media[0].id, type: p.media[0].type, url: p.media[0].url }
+          : null,
+        paywalled,
+      };
+    });
+
+    const serviceItems = await prisma.serviceItem.findMany({
+      where: { ownerId: profile.id },
+      orderBy: { createdAt: "desc" },
+      include: { media: true },
+    });
+
+    const gallery = await prisma.profileMedia.findMany({
+      where: { ownerId: profile.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Obfuscate exact location for non-owner PROFESSIONAL profiles to protect personal safety.
+    // ESTABLISHMENT and SHOP profiles are businesses — their address should remain public.
+    const safeProfile = { ...profile };
+    if (!isOwner && profile.profileType === "PROFESSIONAL") {
+      const obfuscated = obfuscateLocation(profile.latitude, profile.longitude, profile.id);
+      safeProfile.latitude = obfuscated.latitude;
+      safeProfile.longitude = obfuscated.longitude;
+      safeProfile.address = null;
+    }
+
+    return res.json({
+      profile: safeProfile,
+      isSubscribed,
+      isOwner,
+      subscriptionExpiresAt: subscription?.expiresAt.toISOString() || null,
+      posts: payload,
+      serviceItems,
+      gallery,
+    });
+  }),
+);
+
+profileRouter.post(
+  "/profiles/:username/subscribe",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    return res.status(410).json({ error: "USE_BILLING_START" });
+  }),
+);
+
+profileRouter.get(
+  "/profile/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({
+      where: { id: req.session.userId! },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        coverUrl: true,
+        coverPositionX: true,
+        coverPositionY: true,
+        bio: true,
+        phone: true,
+        gender: true,
+        preferenceGender: true,
+        profileType: true,
+        address: true,
+        city: true,
+        latitude: true,
+        longitude: true,
+        birthdate: true,
+        serviceCategory: true,
+        serviceDescription: true,
+        subscriptionPrice: true,
+        heightCm: true,
+        weightKg: true,
+        measurements: true,
+        hairColor: true,
+        skinTone: true,
+        languages: true,
+        serviceStyleTags: true,
+        availabilityNote: true,
+        baseRate: true,
+        minDurationMinutes: true,
+        acceptsIncalls: true,
+        acceptsOutcalls: true,
+        allowFreeMessages: true,
+        isActive: true,
+        isOnline: true,
+        isVerified: true,
+        role: true,
+        membershipExpiresAt: true,
+        shopTrialEndsAt: true,
+        primaryCategory: true,
+        profileTags: true,
+        serviceTags: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+    return res.json({ user });
+  }),
+);
+
+async function updateProfile(req: any, res: any) {
+  const {
+    displayName,
+    bio,
+    address,
+    phone,
+    preferenceGender,
+    gender,
+    username,
+    subscriptionPrice,
+    serviceCategory,
+    serviceDescription,
+    city,
+    heightCm,
+    weightKg,
+    measurements,
+    hairColor,
+    skinTone,
+    languages,
+    serviceStyleTags,
+    availabilityNote,
+    baseRate,
+    minDurationMinutes,
+    acceptsIncalls,
+    acceptsOutcalls,
+    latitude,
+    longitude,
+    allowFreeMessages,
+    birthdate,
+    isActive,
+    primaryCategory,
+    profileTags,
+    serviceTags,
+    coverPositionX,
+    coverPositionY,
+    isOnline,
+  } = req.body as Record<string, string | boolean | string[] | number | null>;
+  const allowedGenders = new Set(["MALE", "FEMALE", "OTHER"]);
+  const allowedPrefs = new Set(["MALE", "FEMALE", "ALL", "OTHER"]);
+  const safeGender = gender && allowedGenders.has(gender) ? gender : undefined;
+  const safePreference =
+    preferenceGender && allowedPrefs.has(preferenceGender)
+      ? preferenceGender
+      : undefined;
+  const priceValue = subscriptionPrice ? Number(subscriptionPrice) : undefined;
+  const safePrice =
+    priceValue !== undefined && Number.isFinite(priceValue)
+      ? Math.max(100, Math.min(20000, priceValue))
+      : undefined;
+  const me = await prisma.user.findUnique({
+    where: { id: req.session.userId! },
+    select: { profileType: true, phone: true, displayName: true },
+  });
+  if (!me) return res.status(404).json({ error: "NOT_FOUND" });
+  if (me.profileType === "PROFESSIONAL" && bio !== undefined) {
+    if (!bio || bio.trim().length < 20) {
+      return res.status(400).json({
+        error: "BIO_REQUIRED",
+        message: "La descripción del perfil debe tener al menos 20 caracteres.",
+      });
+    }
+  }
+  const canSetPrice = me.profileType === "CREATOR";
+  const allowFree = allowFreeMessages === "true";
+  const parseNullableInt = (
+    value?: string | null,
+    max = Number.MAX_SAFE_INTEGER,
+  ) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return undefined;
+    return Math.max(0, Math.min(max, Math.round(parsed)));
+  };
+  const clampCoverPosition = (value: unknown) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return undefined;
+    return Math.max(0, Math.min(100, parsed));
+  };
+  const parseNullableBool = (value?: string | null) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === "") return null;
+    if (value === "true") return true;
+    if (value === "false") return false;
+    return undefined;
+  };
+  const safeIsActive =
+    isActive === undefined
+      ? undefined
+      : typeof isActive === "boolean"
+        ? isActive
+        : isActive === "true";
+  let safeBirthdate: Date | null | undefined = undefined;
+  if (birthdate !== undefined) {
+    if (!birthdate) {
+      safeBirthdate = null;
+    } else {
+      const parsed = new Date(birthdate);
+      if (Number.isNaN(parsed.getTime())) {
+        return res
+          .status(400)
+          .json({
+            error: "BIRTHDATE_INVALID",
+            message: "La fecha de nacimiento no es válida.",
+          });
+      }
+      const now = new Date();
+      let age = now.getFullYear() - parsed.getFullYear();
+      const m = now.getMonth() - parsed.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < parsed.getDate())) {
+        age -= 1;
+      }
+      if (age < 18) {
+        return res
+          .status(400)
+          .json({
+            error: "BIRTHDATE_UNDERAGE",
+            message: "Debes ser mayor de 18 años.",
+          });
+      }
+      safeBirthdate = parsed;
+    }
+  }
+
+  const MIN_BASE_RATE = 1000;
+  if (
+    baseRate !== undefined &&
+    baseRate !== null &&
+    baseRate !== ""
+  ) {
+    const parsedBaseRate = Number(baseRate);
+    if (
+      Number.isFinite(parsedBaseRate) &&
+      parsedBaseRate > 0 &&
+      parsedBaseRate < MIN_BASE_RATE
+    ) {
+      return res.status(400).json({
+        error: "BASE_RATE_TOO_LOW",
+        message: `La tarifa base mínima es $${MIN_BASE_RATE.toLocaleString("es-CL")} CLP.`,
+      });
+    }
+  }
+
+  // `phone ?? undefined` let an empty string through (?? only catches null/undefined),
+  // silently wiping a professional's number. Enforce a valid number like registration.
+  let phoneUpdate: string | null | undefined = undefined;
+  if (phone !== undefined) {
+    const trimmedPhone = String(phone ?? "").trim();
+    if (me.profileType === "PROFESSIONAL") {
+      if (!PROFESSIONAL_PHONE_REGEX.test(trimmedPhone)) {
+        return res.status(400).json({
+          error: "PHONE_INVALID",
+          message:
+            "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+        });
+      }
+      // El número de WhatsApp es la vía de contacto del anuncio: cambiarlo por
+      // cuenta propia deja la cuenta anterior publicada con un número muerto.
+      // Una vez fijado sólo se cambia por solicitud revisada en el admin.
+      if (me.phone && !samePhone(trimmedPhone, me.phone)) {
+        return res.status(403).json({
+          error: "PHONE_LOCKED",
+          message:
+            "Tu número solo puede cambiarse con aprobación del equipo. Envía una solicitud desde tu perfil.",
+        });
+      }
+      phoneUpdate = trimmedPhone;
+    } else {
+      phoneUpdate = trimmedPhone === "" ? null : trimmedPhone;
+    }
+  }
+
+  /* El nombre público sigue la misma regla que el teléfono: es con lo que se
+     reconoce el anuncio, así que una vez puesto sólo cambia con revisión del
+     equipo. Para el resto de perfiles se edita, pero con el mismo tope de
+     largo que el registro: un nombre kilométrico rompe las tarjetas. */
+  let displayNameUpdate: string | undefined = undefined;
+  if (displayName !== undefined && displayName !== null) {
+    const nextName = normalizeDisplayName(String(displayName));
+    const invalidName = displayNameError(nextName);
+    if (invalidName) {
+      return res.status(400).json({ error: "NAME_INVALID", message: invalidName });
+    }
+    if (
+      me.profileType === "PROFESSIONAL" &&
+      me.displayName &&
+      !sameName(nextName, me.displayName)
+    ) {
+      return res.status(403).json({
+        error: "NAME_LOCKED",
+        message:
+          "Tu nombre solo puede cambiarse con aprobación del equipo. Envía una solicitud desde tu perfil.",
+      });
+    }
+    displayNameUpdate = nextName;
+  }
+
+  const baseData: Record<string, unknown> = {
+    displayName: displayNameUpdate,
+    bio: bio ?? undefined,
+    address: address ?? undefined,
+    phone: phoneUpdate,
+    preferenceGender: safePreference,
+    gender: safeGender,
+    username: username ?? undefined,
+    subscriptionPrice: canSetPrice ? safePrice : undefined,
+    allowFreeMessages: canSetPrice ? allowFree : undefined,
+    serviceCategory: serviceCategory ?? undefined,
+    serviceDescription: serviceDescription ?? undefined,
+    heightCm: parseNullableInt(heightCm, 260),
+    weightKg: parseNullableInt(weightKg, 250),
+    measurements: measurements ?? undefined,
+    hairColor: hairColor ?? undefined,
+    skinTone: skinTone ?? undefined,
+    languages: languages ?? undefined,
+    serviceStyleTags: serviceStyleTags ?? undefined,
+    availabilityNote: availabilityNote ?? undefined,
+    primaryCategory: primaryCategory != null ? String(primaryCategory) : undefined,
+    profileTags: Array.isArray(profileTags)
+      ? profileTags
+          .map((t: unknown) => String(t).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+          .filter((tag) => !ADMIN_ONLY_PROFILE_TAGS.has(tag))
+      : undefined,
+    serviceTags: Array.isArray(serviceTags)
+      ? serviceTags.map((t: unknown) => String(t).toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+      : undefined,
+    baseRate: parseNullableInt(baseRate, 10000000),
+    minDurationMinutes: parseNullableInt(minDurationMinutes, 1440),
+    acceptsIncalls: parseNullableBool(acceptsIncalls),
+    acceptsOutcalls: parseNullableBool(acceptsOutcalls),
+    city: city ?? undefined,
+    latitude: latitude ? Number(latitude) : undefined,
+    longitude: longitude ? Number(longitude) : undefined,
+    birthdate: safeBirthdate,
+    isActive: safeIsActive,
+    coverPositionX: clampCoverPosition(coverPositionX),
+    coverPositionY: clampCoverPosition(coverPositionY),
+    isOnline:
+      isOnline === undefined
+        ? undefined
+        : typeof isOnline === "boolean"
+          ? isOnline
+          : isOnline === "true"
+            ? true
+            : isOnline === "false"
+              ? false
+              : undefined,
+  };
+
+  let user: any;
+  try {
+    user = await prisma.user.update({
+      where: { id: req.session.userId! },
+      data: baseData,
+    });
+  } catch (err) {
+    if (
+      (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2022") ||
+      err instanceof Prisma.PrismaClientValidationError
+    ) {
+      // New columns not in DB yet — strip them and retry
+      delete baseData.primaryCategory;
+      delete baseData.profileTags;
+      delete baseData.serviceTags;
+      delete baseData.coverPositionX;
+      delete baseData.coverPositionY;
+      user = await prisma.user.update({
+        where: { id: req.session.userId! },
+        data: baseData,
+      });
+    } else {
+      throw err;
+    }
+  }
+  return res.json({ user });
+}
+
+// Front (dashboard) usa PATCH; mantenemos PUT por compatibilidad.
+profileRouter.put(
+  "/profile",
+  requireAuth,
+  asyncHandler(async (req, res) => updateProfile(req, res)),
+);
+
+profileRouter.patch(
+  "/profile",
+  requireAuth,
+  asyncHandler(async (req, res) => updateProfile(req, res)),
+);
+
+profileRouter.post(
+  "/profile/avatar",
+  requireAuth,
+  uploadImage.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+    let optimizedFilename: string;
+    try {
+      await validateUploadedFile(req.file, "image");
+      optimizedFilename = await optimizeUploadedImage(req.file, "avatar");
+    } catch (err) {
+      await discardUploadedFile(req.file);
+      const failure = describeUploadFailure(err);
+      console.error("[profile/avatar] upload failed", {
+        userId: req.session.userId,
+        originalname: req.file.originalname,
+        code: failure.code,
+        error: err,
+      });
+      return res.status(400).json({ error: failure.code, message: failure.message });
+    }
+    const url = storageProvider.publicUrl(optimizedFilename);
+    const user = await prisma.user.update({
+      where: { id: req.session.userId! },
+      data: { avatarUrl: url },
+    });
+    return res.json({ user });
+  }),
+);
+
+profileRouter.post(
+  "/profile/cover",
+  requireAuth,
+  uploadImage.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+    let optimizedFilename: string;
+    try {
+      await validateUploadedFile(req.file, "image");
+      optimizedFilename = await optimizeUploadedImage(req.file, "cover");
+    } catch (err) {
+      await discardUploadedFile(req.file);
+      const failure = describeUploadFailure(err);
+      console.error("[profile/cover] upload failed", {
+        userId: req.session.userId,
+        originalname: req.file.originalname,
+        code: failure.code,
+        error: err,
+      });
+      return res.status(400).json({ error: failure.code, message: failure.message });
+    }
+    const url = storageProvider.publicUrl(optimizedFilename);
+    const parseCoverPos = (raw: unknown) => {
+      const parsed = Number(raw);
+      if (!Number.isFinite(parsed)) return 50;
+      return Math.max(0, Math.min(100, parsed));
+    };
+    const coverPositionX = parseCoverPos(req.body?.coverPositionX);
+    const coverPositionY = parseCoverPos(req.body?.coverPositionY);
+    const user = await prisma.user.update({
+      where: { id: req.session.userId! },
+      data: { coverUrl: url, coverPositionX, coverPositionY },
+    });
+    return res.json({ user, coverUrl: url, coverPositionX: user.coverPositionX, coverPositionY: user.coverPositionY });
+  }),
+);
+
+// Set cover from an existing gallery media item
+profileRouter.post(
+  "/profile/cover-from-media",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const { mediaId } = req.body as { mediaId?: string };
+    if (!mediaId) return res.status(400).json({ error: "MEDIA_ID_REQUIRED" });
+    const media = await prisma.profileMedia.findFirst({
+      where: { id: mediaId, ownerId: req.session.userId! },
+    });
+    if (!media) return res.status(404).json({ error: "MEDIA_NOT_FOUND" });
+    const user = await prisma.user.update({
+      where: { id: req.session.userId! },
+      data: { coverUrl: media.url, coverPositionX: 50, coverPositionY: 50 },
+    });
+    return res.json({ user, coverUrl: media.url, coverPositionX: user.coverPositionX, coverPositionY: user.coverPositionY });
+  }),
+);
+
+profileRouter.get(
+  "/profile/media",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const media = await prisma.profileMedia.findMany({
+      where: { ownerId: req.session.userId! },
+      orderBy: { createdAt: "desc" },
+    });
+    return res.json({ media });
+  }),
+);
+
+profileRouter.post(
+  "/profile/media",
+  requireAuth,
+  uploadMedia.array("files", 12),
+  asyncHandler(async (req, res) => {
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    if (!files.length) return res.status(400).json({ error: "NO_FILES" });
+
+    // Photos uploaded by a PROFESSIONAL while still below the registration
+    // minimum belong to the registration set and must be locked so the user
+    // can't drop below the minimum by deleting them. Once they have the
+    // minimum, additional photos are unlocked and freely deletable.
+    const owner = await prisma.user.findUnique({
+      where: { id: req.session.userId! },
+      select: { profileType: true },
+    });
+    let lockedImageBudget = 0;
+    if (owner?.profileType === "PROFESSIONAL") {
+      const existingImages = await prisma.profileMedia.count({
+        where: { ownerId: req.session.userId!, type: "IMAGE" },
+      });
+      lockedImageBudget = Math.max(0, MIN_PROFESSIONAL_GALLERY_PHOTOS - existingImages);
+    }
+
+    // Process each file independently so a single bad photo (e.g. iPhone
+    // HEIC the server can't decode, oversized file) doesn't drop the whole
+    // batch. Previously one bad file made the FE see a 500 and the user
+    // believed all photos "disappeared" — the others were either lost or
+    // partially saved depending on order.
+    const media: Awaited<ReturnType<typeof prisma.profileMedia.create>>[] = [];
+    const failures: { index: number; originalname: string; code: string; message: string }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const { type } = await validateUploadedFile(file, "image-or-video");
+        const finalFilename =
+          type === "IMAGE" ? await optimizeUploadedImage(file, "gallery") : file.filename;
+        const url = storageProvider.publicUrl(finalFilename);
+        const isLocked = type === "IMAGE" && lockedImageBudget > 0;
+        const record = await prisma.profileMedia.create({
+          data: { ownerId: req.session.userId!, type, url, isLocked },
+        });
+        if (isLocked) lockedImageBudget--;
+        media.push(record);
+      } catch (err) {
+        await discardUploadedFile(file);
+        const failure = describeUploadFailure(err);
+        failures.push({
+          index: i,
+          originalname: file.originalname,
+          code: failure.code,
+          message: failure.message,
+        });
+        console.error("[profile/media] file failed", {
+          userId: req.session.userId,
+          originalname: file.originalname,
+          code: failure.code,
+          error: err,
+        });
+      }
+    }
+
+    if (media.length === 0) {
+      return res.status(400).json({
+        error: "ALL_FILES_FAILED",
+        message: failures[0]?.message || "Ninguna foto pudo procesarse.",
+        failures,
+      });
+    }
+
+    return res.json({ media, failures });
+  }),
+);
+
+profileRouter.delete(
+  "/profile/media/:id",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const media = await prisma.profileMedia.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!media || media.ownerId !== req.session.userId!)
+      return res.status(404).json({ error: "NOT_FOUND" });
+    if (media.isLocked)
+      return res.status(403).json({ error: "MEDIA_LOCKED" });
+    await prisma.profileMedia.delete({ where: { id: media.id } });
+    return res.json({ ok: true });
+  }),
+);
+
+// ── Upgrade Client profile to Professional ────────────────────────────────
+//
+// Clients que se registraron con el tipo de cuenta equivocado pueden
+// convertirse en Profesionales aquí, siempre y cuando completen los
+// requerimientos: nombre, género, categoría, dirección con coordenadas,
+// teléfono y al menos 3 fotos en su galería.
+//
+// Solo CLIENT puede convertirse — el resto (PROFESSIONAL, ESTABLISHMENT,
+// SHOP, VIEWER, CREATOR) tiene su propio flujo o no aplica.
+const UPGRADEABLE_TYPES = new Set(["CLIENT"]);
+const PROFESSIONAL_GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
+
+function addDays(base: Date, days: number): Date {
+  const d = new Date(base.getTime());
+  d.setUTCDate(d.getUTCDate() + days);
+  return d;
+}
+
+profileRouter.post(
+  "/profile/upgrade-to-professional",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const me = await prisma.user.findUnique({
+      where: { id: req.session.userId! },
+      select: {
+        id: true,
+        username: true,
+        profileType: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+    });
+    if (!me) return res.status(404).json({ error: "NOT_FOUND" });
+
+    if (!UPGRADEABLE_TYPES.has(me.profileType)) {
+      return res.status(400).json({
+        error: "NOT_UPGRADEABLE",
+        message:
+          "Esta cuenta no es de cliente, no puede convertirse en perfil profesional.",
+      });
+    }
+
+    const {
+      displayName,
+      gender,
+      phone,
+      primaryCategory,
+      address,
+      city,
+      latitude,
+      longitude,
+      bio,
+      birthYear,
+      birthMonth,
+      acceptTerms,
+    } = req.body as Record<string, any>;
+
+    const safeDisplayName = normalizeDisplayName(displayName);
+    const displayNameIssue = displayNameError(safeDisplayName);
+    if (displayNameIssue) {
+      return res.status(400).json({
+        error: "DISPLAY_NAME_REQUIRED",
+        message: displayNameIssue,
+      });
+    }
+
+    const safeGender = String(gender || "").toUpperCase();
+    if (!PROFESSIONAL_GENDERS.has(safeGender)) {
+      return res.status(400).json({
+        error: "GENDER_REQUIRED",
+        message: "Selecciona tu género para continuar.",
+      });
+    }
+
+    const safePhone = String(phone || "").trim();
+    if (!PROFESSIONAL_PHONE_REGEX.test(safePhone)) {
+      return res.status(400).json({
+        error: "PHONE_INVALID",
+        message:
+          "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+      });
+    }
+
+    const safePrimaryCategory = String(primaryCategory || "").trim();
+    if (!safePrimaryCategory) {
+      return res.status(400).json({
+        error: "CATEGORY_REQUIRED",
+        message: "Selecciona el tipo de servicio que ofreces.",
+      });
+    }
+
+    const safeAddress = String(address || "").trim();
+    if (safeAddress.length < 6) {
+      return res.status(400).json({
+        error: "ADDRESS_REQUIRED",
+        message:
+          "Debes ingresar y validar tu dirección con el buscador de Mapbox.",
+      });
+    }
+
+    let safeLatitude = Number(latitude);
+    let safeLongitude = Number(longitude);
+    let safeCity = typeof city === "string" && city.trim() ? city.trim() : null;
+    if (!Number.isFinite(safeLatitude) || !Number.isFinite(safeLongitude)) {
+      const geocoded = await geocodeAddress(safeAddress);
+      if (
+        !geocoded ||
+        !Number.isFinite(geocoded.latitude) ||
+        !Number.isFinite(geocoded.longitude)
+      ) {
+        return res.status(400).json({
+          error: "ADDRESS_NOT_VERIFIED",
+          message:
+            "Debes validar la dirección usando el buscador de Mapbox.",
+        });
+      }
+      safeLatitude = geocoded.latitude;
+      safeLongitude = geocoded.longitude;
+      if (!safeCity) safeCity = geocoded.city || null;
+    }
+
+    let safeBirthdate: Date | null = null;
+    if (birthYear) {
+      const yearNum = parseInt(String(birthYear), 10);
+      const monthNum = birthMonth ? parseInt(String(birthMonth), 10) - 1 : 0;
+      if (!Number.isFinite(yearNum)) {
+        return res.status(400).json({
+          error: "BIRTHDATE_INVALID",
+          message: "La fecha de nacimiento no es válida.",
+        });
+      }
+      const candidate = new Date(yearNum, monthNum, 15);
+      if (Number.isNaN(candidate.getTime())) {
+        return res.status(400).json({
+          error: "BIRTHDATE_INVALID",
+          message: "La fecha de nacimiento no es válida.",
+        });
+      }
+      const now = new Date();
+      let age = now.getFullYear() - candidate.getFullYear();
+      const m = now.getMonth() - candidate.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < candidate.getDate())) age -= 1;
+      if (age < 18) {
+        return res.status(400).json({
+          error: "BIRTHDATE_UNDERAGE",
+          message: "Debes ser mayor de 18 años.",
+        });
+      }
+      safeBirthdate = candidate;
+    }
+
+    if (acceptTerms !== true && acceptTerms !== "true") {
+      return res.status(400).json({
+        error: "TERMS_REQUIRED",
+        message: "Debes aceptar los términos y condiciones para continuar.",
+      });
+    }
+
+    const galleryCount = await prisma.profileMedia.count({
+      where: { ownerId: me.id, type: "IMAGE" },
+    });
+    if (galleryCount < MIN_PROFESSIONAL_GALLERY_PHOTOS) {
+      return res.status(400).json({
+        error: "INSUFFICIENT_PHOTOS",
+        message: `Sube al menos ${MIN_PROFESSIONAL_GALLERY_PHOTOS} fotos en tu galería antes de convertirte en profesional.`,
+        required: MIN_PROFESSIONAL_GALLERY_PHOTOS,
+        current: galleryCount,
+      });
+    }
+
+    const phoneTaken = await prisma.user.findFirst({
+      where: { phone: safePhone, NOT: { id: me.id } },
+      select: { id: true },
+    });
+    if (phoneTaken) {
+      return res.status(409).json({
+        error: "PHONE_IN_USE",
+        message: "Este teléfono ya está registrado en otra cuenta.",
+      });
+    }
+
+    let resolvedCategoryId: string | null = null;
+    let resolvedCategoryName: string | null = safePrimaryCategory;
+    const cat = await prisma.category.findFirst({
+      where: {
+        OR: [
+          { slug: safePrimaryCategory },
+          { name: { equals: safePrimaryCategory, mode: "insensitive" } },
+          { displayName: { equals: safePrimaryCategory, mode: "insensitive" } },
+        ],
+      },
+      select: { id: true, displayName: true, name: true },
+    });
+    if (cat) {
+      resolvedCategoryId = cat.id;
+      resolvedCategoryName = cat.displayName || cat.name;
+    }
+
+    const now = new Date();
+    const trialEndsAt = addDays(now, config.freeTrialDays);
+
+    const updated = await prisma.user.update({
+      where: { id: me.id },
+      data: {
+        profileType: "PROFESSIONAL",
+        displayName: safeDisplayName,
+        gender: safeGender as any,
+        phone: safePhone,
+        primaryCategory: safePrimaryCategory,
+        serviceCategory: resolvedCategoryName,
+        categoryId: resolvedCategoryId,
+        address: safeAddress,
+        city: safeCity,
+        latitude: safeLatitude,
+        longitude: safeLongitude,
+        bio: bio ? String(bio).slice(0, 1000) : undefined,
+        birthdate: safeBirthdate ?? undefined,
+        termsAcceptedAt: now,
+        shopTrialEndsAt: trialEndsAt,
+        subscriptionPrice: 2500,
+        tier: "SILVER",
+        // El perfil queda oculto hasta que un admin verifique por teléfono.
+        isVerified: false,
+        isActive: false,
+        verifiedAt: null,
+        verifiedByPhone: null,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        profileType: true,
+        avatarUrl: true,
+        isVerified: true,
+        shopTrialEndsAt: true,
+      },
+    });
+
+    if (!updated.avatarUrl) {
+      const firstImage = await prisma.profileMedia.findFirst({
+        where: { ownerId: me.id, type: "IMAGE" },
+        orderBy: { createdAt: "asc" },
+        select: { url: true },
+      });
+      if (firstImage?.url) {
+        await prisma.user.update({
+          where: { id: me.id },
+          data: { avatarUrl: firstImage.url },
+        });
+      }
+    }
+
+    // Lock the registration photos (oldest MIN images) so the user can't
+    // delete them and fall below the professional minimum.
+    const registrationPhotos = await prisma.profileMedia.findMany({
+      where: { ownerId: me.id, type: "IMAGE", isLocked: false },
+      orderBy: { createdAt: "asc" },
+      take: MIN_PROFESSIONAL_GALLERY_PHOTOS,
+      select: { id: true },
+    });
+    if (registrationPhotos.length > 0) {
+      await prisma.profileMedia.updateMany({
+        where: { id: { in: registrationPhotos.map((p) => p.id) } },
+        data: { isLocked: true },
+      });
+    }
+
+    await createProfessionalForumThread({
+      userId: updated.id,
+      username: updated.username,
+      displayName: updated.displayName || null,
+      avatarUrl: updated.avatarUrl,
+      primaryCategory: safePrimaryCategory,
+    }).catch((error) => {
+      console.error("[profile/upgrade] forum thread failed", {
+        userId: updated.id,
+        error,
+      });
+    });
+
+    await emitAdminEvent({
+      type: "profile_verification_requested",
+      user: updated.username || null,
+    }).catch(() => {});
+
+    return res.json({
+      ok: true,
+      user: {
+        ...updated,
+        shopTrialEndsAt: updated.shopTrialEndsAt?.toISOString() || null,
+      },
+    });
+  }),
+);

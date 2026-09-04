@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+.env
+.env.*
+!.env.example
+uploads
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# Local seed manifests (state of reversible seed runs)
+prisma/scripts/.umate-seed-manifest.json
+
+# WhatsApp bot (Baileys) session credentials — never commit
+.wa-session/

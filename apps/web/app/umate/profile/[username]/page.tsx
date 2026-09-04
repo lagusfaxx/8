@@ -1,0 +1,589 @@
+"use client";
+
+import { useEffect, useState, useCallback, useRef } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import {
+  BadgeCheck,
+  Calendar,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Grid3X3,
+  Heart,
+  ImageIcon,
+  Loader2,
+  Lock,
+  MessageCircle,
+  Play,
+  Send,
+  Share2,
+  Shield,
+  Trash2,
+  UserMinus,
+  Users,
+  Video,
+} from "lucide-react";
+import { apiFetch, resolveMediaUrl } from "../../../../lib/api";
+import useMe from "../../../../hooks/useMe";
+import ProtectedMedia from "../../_components/ProtectedMedia";
+import SubscribeModal from "../../_components/SubscribeModal";
+
+type Creator = {
+  id: string;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  subscriberCount: number;
+  totalPosts: number;
+  totalLikes: number;
+  monthlyPriceCLP: number;
+  status: string;
+  user: { username: string; isVerified: boolean };
+};
+
+type Post = {
+  id: string;
+  caption: string | null;
+  visibility: "FREE" | "PREMIUM";
+  likeCount: number;
+  commentCount?: number;
+  createdAt: string;
+  media: { id: string; type: string; url: string | null; thumbnailUrl?: string | null; pos: number; visibility?: string; isBlurred?: boolean }[];
+  isBlurred: boolean;
+  isLiked: boolean;
+};
+
+type Comment = {
+  id: string;
+  text: string;
+  createdAt: string;
+  user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
+};
+
+function MediaCarousel({ media, onUnlock }: { media: { id: string; type: string; url: string | null; thumbnailUrl?: string | null; pos: number; visibility?: string; isBlurred?: boolean }[]; onUnlock?: () => void }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [current, setCurrent] = useState(0);
+  const sorted = [...media].sort((a, b) => a.pos - b.pos);
+
+  const scroll = (dir: number) => {
+    if (!scrollRef.current) return;
+    const newIdx = Math.max(0, Math.min(sorted.length - 1, current + dir));
+    const child = scrollRef.current.children[newIdx] as HTMLElement;
+    if (child) {
+      child.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "start" });
+      setCurrent(newIdx);
+    }
+  };
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    const idx = Math.round(el.scrollLeft / el.offsetWidth);
+    setCurrent(idx);
+  };
+
+  return (
+    <div className="relative">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide"
+        style={{ WebkitOverflowScrolling: "touch" }}
+      >
+        {sorted.map((m) => (
+          <div key={m.id} className="w-full shrink-0 snap-start">
+            {m.isBlurred ? (
+              <div className="relative aspect-[4/5] w-full overflow-hidden">
+                {m.type === "VIDEO" && m.thumbnailUrl ? (
+                  <img
+                    src={resolveMediaUrl(m.thumbnailUrl) || ""}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl brightness-75 saturate-150"
+                  />
+                ) : m.url && m.type !== "VIDEO" ? (
+                  <img
+                    src={resolveMediaUrl(m.url) || ""}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl brightness-75 saturate-150"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-[#00aff0]/30 via-purple-600/20 to-pink-500/15" />
+                )}
+                <div className="absolute inset-0 bg-black/10" />
+                {/* Video badge on blurred content */}
+                {m.type === "VIDEO" && (
+                  <div className="absolute left-3 top-3 z-10 flex items-center gap-1.5 rounded-lg bg-black/50 px-2.5 py-1 backdrop-blur-sm">
+                    <Play className="h-3.5 w-3.5 text-white fill-current" />
+                    <span className="text-[11px] font-semibold text-white">Video</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <div className="rounded-full bg-white/[0.12] p-4 backdrop-blur-md">
+                    <Lock className="h-8 w-8 text-white/80" />
+                  </div>
+                  <p className="mt-3 text-sm font-bold text-white drop-shadow-lg">Premium</p>
+                  <button
+                    type="button"
+                    onClick={onUnlock}
+                    className="mt-3 rounded-full bg-[#00aff0] px-6 py-2 text-sm font-bold text-white transition hover:bg-[#00aff0]/90"
+                  >
+                    Desbloquear
+                  </button>
+                </div>
+              </div>
+            ) : m.url ? (
+              m.type === "VIDEO" ? (
+                <video
+                  src={resolveMediaUrl(m.url) || ""}
+                  poster={m.thumbnailUrl ? resolveMediaUrl(m.thumbnailUrl) || undefined : undefined}
+                  controls
+                  controlsList="nodownload noplaybackrate noremoteplayback"
+                  disablePictureInPicture
+                  disableRemotePlayback
+                  playsInline
+                  preload="metadata"
+                  crossOrigin="anonymous"
+                  onContextMenu={(e) => e.preventDefault()}
+                  className="w-full aspect-[4/5] object-contain bg-black"
+                />
+              ) : (
+                <img
+                  src={resolveMediaUrl(m.url) || ""}
+                  alt=""
+                  className="w-full aspect-[4/5] object-contain bg-black"
+                />
+              )
+            ) : (
+              <div className="aspect-[4/5] w-full bg-gradient-to-br from-white/[0.04] to-white/[0.02]" />
+            )}
+          </div>
+        ))}
+      </div>
+      {sorted.length > 1 && (
+        <>
+          <div className="flex justify-center gap-1.5 py-2">
+            {sorted.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === current ? "w-5 bg-[#00aff0]" : "w-1.5 bg-white/15"
+                }`}
+              />
+            ))}
+          </div>
+          {current > 0 && (
+            <button
+              type="button"
+              onClick={() => scroll(-1)}
+              className="absolute left-2 top-1/3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition hover:bg-black/80 hover:scale-105"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          {current < sorted.length - 1 && (
+            <button
+              type="button"
+              onClick={() => scroll(1)}
+              className="absolute right-2 top-1/3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white/90 backdrop-blur-sm shadow-[0_2px_8px_rgba(0,0,0,0.4)] transition hover:bg-black/80 hover:scale-105"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function CreatorProfilePage() {
+  const { username } = useParams<{ username: string }>();
+  const { me } = useMe();
+  const [creator, setCreator] = useState<Creator | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [subscribeModalOpen, setSubscribeModalOpen] = useState(false);
+  const [tab, setTab] = useState<"all" | "free" | "premium" | "photos" | "videos">("all");
+  const [isCreatorUser, setIsCreatorUser] = useState(false);
+  const [openComments, setOpenComments] = useState<string | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [commentText, setCommentText] = useState("");
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  useEffect(() => {
+    apiFetch<{ creator: Creator; isSubscribed: boolean; posts: Post[] }>(`/umate/profile/${username}`)
+      .then((d) => {
+        if (!d) return;
+        setCreator(d.creator);
+        setPosts(d.posts);
+        setIsSubscribed(d.isSubscribed);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [username]);
+
+  useEffect(() => {
+    if (!me?.user) return;
+    apiFetch<{ creator: any }>("/umate/creator/me")
+      .then((d) => setIsCreatorUser(Boolean(d?.creator && d.creator.status !== "SUSPENDED")))
+      .catch(() => {});
+  }, [me]);
+
+  const handleSubscribeClick = () => {
+    if (!creator || isCreatorUser) return;
+    if (!me?.user) {
+      window.location.href = `/login?next=/umate/profile/${encodeURIComponent(username)}`;
+      return;
+    }
+    setSubscribeModalOpen(true);
+  };
+
+  const handleSubscribeSuccess = async () => {
+    // Refresh profile to reload with premium content unlocked
+    setSubscribeModalOpen(false);
+    setIsSubscribed(true);
+    setCreator((prev) => prev ? { ...prev, subscriberCount: prev.subscriberCount + 1 } : prev);
+    // Reload posts so blur is removed
+    const data = await apiFetch<{ creator: Creator; isSubscribed: boolean; posts: Post[] }>(`/umate/profile/${username}`).catch(() => null);
+    if (data) {
+      setCreator(data.creator);
+      setPosts(data.posts);
+      setIsSubscribed(data.isSubscribed);
+    }
+  };
+
+  const toggleLike = async (postId: string) => {
+    const res = await apiFetch<{ liked: boolean }>(`/umate/posts/${postId}/like`, { method: "POST" }).catch(() => null);
+    if (!res) return;
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, isLiked: res.liked, likeCount: p.likeCount + (res.liked ? 1 : -1) } : p)));
+  };
+
+  const handleUnsubscribe = () => {
+    window.location.href = "/umate/account/subscriptions";
+  };
+
+  const loadComments = useCallback(async (postId: string) => {
+    setOpenComments(postId);
+    setLoadingComments(true);
+    setComments([]);
+    const data = await apiFetch<{ comments: Comment[] }>(`/umate/posts/${postId}/comments`).catch(() => null);
+    setComments(data?.comments || []);
+    setLoadingComments(false);
+  }, []);
+
+  const postComment = async (postId: string) => {
+    if (!commentText.trim()) return;
+    const data = await apiFetch<{ comment: Comment }>(`/umate/posts/${postId}/comments`, {
+      method: "POST",
+      body: JSON.stringify({ text: commentText }),
+    }).catch(() => null);
+    if (data?.comment) {
+      setComments((prev) => [data.comment, ...prev]);
+      setCommentText("");
+      setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commentCount: (p.commentCount || 0) + 1 } : p)));
+    }
+  };
+
+  const deleteComment = async (commentId: string, postId: string) => {
+    await apiFetch(`/umate/comments/${commentId}`, { method: "DELETE" }).catch(() => null);
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, commentCount: Math.max(0, (p.commentCount || 1) - 1) } : p)));
+  };
+
+  const filtered = posts.filter((p) => {
+    if (tab === "all") return true;
+    if (tab === "free") return p.visibility === "FREE";
+    if (tab === "premium") return p.visibility === "PREMIUM";
+    if (tab === "photos") return p.media.some((m) => m.type === "IMAGE");
+    if (tab === "videos") return p.media.some((m) => m.type === "VIDEO");
+    return true;
+  });
+
+  const visibleMediaFor = (post: Post) => {
+    if (tab === "premium") return post.media.filter((m) => m.visibility === "PREMIUM");
+    return post.media;
+  };
+
+  const premiumCount = posts.filter((p) => p.visibility === "PREMIUM").length;
+  const freeCount = posts.filter((p) => p.visibility === "FREE").length;
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-24 gap-3">
+      <Loader2 className="h-8 w-8 animate-spin text-[#00aff0]/60" />
+    </div>
+  );
+  if (!creator) return <div className="py-24 text-center text-white/30">Perfil no encontrado.</div>;
+
+  const heroImage = creator.coverUrl || creator.avatarUrl;
+
+  return (
+    <div className="min-h-screen relative">
+      {/* Blurred background image behind entire profile */}
+      {heroImage && (
+        <div className="fixed inset-0 z-0">
+          <img
+            src={resolveMediaUrl(heroImage) || ""}
+            alt=""
+            className="h-full w-full object-cover scale-110 blur-[80px] brightness-[0.3] saturate-150"
+          />
+          <div className="absolute inset-0 bg-[#0a0a12]/60" />
+        </div>
+      )}
+
+      <div className="relative z-10 pt-6 pb-8">
+      <div className="mx-auto max-w-[700px] px-4">
+        {/* Profile card */}
+        <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-sm">
+          {/* Cover - contained */}
+          <div className="relative h-32 sm:h-40 md:h-52 overflow-hidden">
+            {creator.coverUrl ? (
+              <img src={resolveMediaUrl(creator.coverUrl) || ""} alt="" className="h-full w-full object-cover" />
+            ) : creator.avatarUrl ? (
+              <img src={resolveMediaUrl(creator.avatarUrl) || ""} alt="" className="h-full w-full object-cover scale-125 blur-2xl brightness-75 saturate-150" />
+            ) : (
+              <div className="h-full w-full bg-gradient-to-br from-[#00aff0]/20 via-purple-600/15 to-pink-500/10" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          </div>
+
+          {/* Avatar + info */}
+          <div className="relative px-3 sm:px-5 pb-4 sm:pb-5">
+            {/* Avatar - overlapping the cover */}
+            <div className="-mt-14 mb-3 flex items-end justify-between">
+              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border-4 border-[#0a0a12] bg-white/10 shadow-[0_4px_30px_rgba(0,175,240,0.15),0_4px_24px_rgba(0,0,0,0.4)] md:h-28 md:w-28">
+                {creator.avatarUrl ? (
+                  <img src={resolveMediaUrl(creator.avatarUrl) || ""} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-gradient-to-br from-[#00aff0]/20 to-purple-600/20 text-2xl font-bold text-white/60">{(creator.displayName || "?")[0]}</div>
+                )}
+              </div>
+
+              {/* Subscribe / Actions */}
+              <div className="flex items-center gap-2 pb-1">
+                {isSubscribed ? (
+                  <button
+                    onClick={handleUnsubscribe}
+                    className="group inline-flex items-center gap-1.5 rounded-xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-400 transition hover:bg-red-500/10 hover:text-red-400"
+                  >
+                    <CheckCircle className="h-4 w-4 group-hover:hidden" />
+                    <UserMinus className="hidden h-4 w-4 group-hover:block" />
+                    <span className="group-hover:hidden">Suscrito</span>
+                    <span className="hidden group-hover:inline">Gestionar</span>
+                  </button>
+                ) : isCreatorUser ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-xl bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-white/35">
+                    <Shield className="h-4 w-4" /> Modo creadora
+                  </span>
+                ) : (
+                  <button
+                    onClick={handleSubscribeClick}
+                    className="inline-flex flex-col items-center gap-0 rounded-xl bg-gradient-to-r from-[#00aff0] to-[#0090d0] px-5 py-2 text-sm font-bold text-white shadow-[0_4px_20px_rgba(0,175,240,0.3)] transition-all duration-200 hover:shadow-[0_6px_28px_rgba(0,175,240,0.4)] hover:-translate-y-px"
+                  >
+                    <span>Suscribirme</span>
+                    <span className="text-[10px] font-semibold opacity-90">
+                      ${creator.monthlyPriceCLP.toLocaleString("es-CL")} /mes
+                    </span>
+                  </button>
+                )}
+                <button className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.06] text-white/35 transition hover:border-white/15 hover:text-white/50">
+                  <Share2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Name & info */}
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-extrabold tracking-tight text-white md:text-2xl">{creator.displayName}</h1>
+                {creator.user.isVerified && <BadgeCheck className="h-5 w-5 text-[#00aff0]" />}
+              </div>
+              <p className="text-sm text-white/30">@{creator.user.username}</p>
+              {creator.bio && <p className="mt-3 text-sm leading-relaxed text-white/50">{creator.bio}</p>}
+
+              {/* Stats row */}
+              <div className="mt-4 flex gap-2 sm:gap-3">
+                {[
+                  { value: creator.totalPosts, label: "Posts" },
+                  { value: creator.subscriberCount, label: "Suscriptores" },
+                  { value: creator.totalLikes, label: "Likes" },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl bg-white/[0.06] border border-white/[0.06] px-2 sm:px-4 py-2 sm:py-2.5 text-center flex-1 min-w-0">
+                    <p className="text-base font-extrabold text-white">{s.value}</p>
+                    <p className="text-[10px] sm:text-[11px] text-white/30 truncate">{s.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Content tabs */}
+        <div className="mt-5 flex gap-1 overflow-x-auto pb-px scrollbar-hide">
+          <div className="flex items-center gap-0.5 rounded-xl bg-white/[0.03] p-1">
+            {([
+              { key: "all" as const, label: "Todos", count: posts.length },
+              { key: "photos" as const, label: "Fotos" },
+              { key: "videos" as const, label: "Videos" },
+              { key: "free" as const, label: "Gratis", count: freeCount },
+              { key: "premium" as const, label: "Premium", count: premiumCount },
+            ]).map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold transition-all duration-200 ${
+                  tab === t.key
+                    ? "bg-gradient-to-r from-[#00aff0] to-[#0090d0] text-white shadow-[0_2px_12px_rgba(0,175,240,0.2)]"
+                    : "text-white/35 hover:text-white/50"
+                }`}
+              >
+                {t.label}
+                {"count" in t && t.count !== undefined && <span className="ml-1 opacity-60">{t.count}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Posts feed */}
+        <div className="mt-5 space-y-5 pb-8">
+          {filtered.map((post) => (
+            <article key={post.id} className="overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.04] backdrop-blur-sm transition-all duration-300 hover:border-white/[0.1] hover:shadow-[0_8px_40px_rgba(0,175,240,0.08)]">
+              {/* Caption */}
+              {post.caption && (
+                <div className="px-4 pt-4 pb-3">
+                  <p className="text-sm leading-relaxed text-white/70">{post.caption}</p>
+                  <p className="mt-1.5 text-[11px] text-white/45">{new Date(post.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}</p>
+                </div>
+              )}
+
+              {/* Media */}
+              {(() => {
+                const media = visibleMediaFor(post);
+                if (media.length === 0) return null;
+                return (
+                  <ProtectedMedia
+                    enabled={!post.isBlurred && post.visibility === "PREMIUM"}
+                    viewerUsername={me?.user?.username}
+                  >
+                    <div className="relative">
+                      <MediaCarousel media={media} onUnlock={handleSubscribeClick} />
+                      {post.visibility === "PREMIUM" && !post.isBlurred && (
+                        <span className="absolute right-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-0.5 text-[10px] font-bold text-amber-400 backdrop-blur-sm">
+                          Premium
+                        </span>
+                      )}
+                    </div>
+                  </ProtectedMedia>
+                );
+              })()}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 sm:gap-4 px-4 py-3">
+                <button
+                  onClick={() => toggleLike(post.id)}
+                  className={`flex items-center gap-1.5 text-sm transition ${
+                    post.isLiked ? "text-rose-500" : "text-white/40 hover:text-rose-400"
+                  }`}
+                >
+                  <Heart className={`h-5 w-5 ${post.isLiked ? "fill-current" : ""}`} />
+                  <span className="text-xs font-medium">{post.likeCount}</span>
+                </button>
+                <button
+                  onClick={() => openComments === post.id ? setOpenComments(null) : loadComments(post.id)}
+                  className={`flex items-center gap-1.5 text-sm transition ${
+                    openComments === post.id ? "text-[#00aff0]" : "text-white/40 hover:text-white/50"
+                  }`}
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  {(post.commentCount || 0) > 0 && <span className="text-xs font-medium">{post.commentCount}</span>}
+                </button>
+              </div>
+
+              {/* Comments section */}
+              {openComments === post.id && (
+                <div className="border-t border-white/[0.04] px-4 py-3 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && postComment(post.id)}
+                      placeholder="Escribe un comentario..."
+                      className="flex-1 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#00aff0]/40"
+                      maxLength={1000}
+                    />
+                    <button
+                      onClick={() => postComment(post.id)}
+                      disabled={!commentText.trim()}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#00aff0] text-white transition hover:bg-[#00aff0]/90 disabled:opacity-30"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  {loadingComments && <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-white/45" /></div>}
+                  {!loadingComments && comments.length === 0 && (
+                    <p className="text-center text-xs text-white/45 py-2">Sin comentarios aún.</p>
+                  )}
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {comments.map((c) => (
+                      <div key={c.id} className="group flex gap-2">
+                        <div className="h-7 w-7 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
+                          {c.user.avatarUrl ? (
+                            <img src={resolveMediaUrl(c.user.avatarUrl) || ""} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[10px] font-bold text-white/40">{(c.user.displayName || c.user.username)[0]}</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs">
+                            <span className="font-semibold text-white/80">{c.user.displayName || c.user.username}</span>{" "}
+                            <span className="text-white/50">{c.text}</span>
+                          </p>
+                          <p className="mt-0.5 text-[10px] text-white/45">{new Date(c.createdAt).toLocaleDateString("es-CL")}</p>
+                        </div>
+                        {me?.user?.id === c.user.id && (
+                          <button
+                            onClick={() => deleteComment(c.id, post.id)}
+                            className="shrink-0 opacity-0 group-hover:opacity-100 transition text-white/40 hover:text-red-400"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </article>
+          ))}
+
+          {filtered.length === 0 && (
+            <div className="rounded-2xl border border-white/[0.04] bg-gradient-to-br from-white/[0.02] to-transparent p-16 text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04]">
+                <Grid3X3 className="h-6 w-6 text-white/15" />
+              </div>
+              <p className="text-sm font-medium text-white/40">No hay contenido en esta categoría</p>
+              <p className="mt-1 text-xs text-white/25">Vuelve pronto para ver nuevo contenido.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      </div>
+
+      {creator && (
+        <SubscribeModal
+          creator={{
+            id: creator.id,
+            displayName: creator.displayName,
+            avatarUrl: creator.avatarUrl,
+            monthlyPriceCLP: creator.monthlyPriceCLP,
+            user: { username: creator.user.username },
+          }}
+          open={subscribeModalOpen}
+          onClose={() => setSubscribeModalOpen(false)}
+          onSuccess={handleSubscribeSuccess}
+        />
+      )}
+    </div>
+  );
+}

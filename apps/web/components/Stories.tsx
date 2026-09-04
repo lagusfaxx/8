@@ -1,0 +1,594 @@
+"use client";
+
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { X, ChevronLeft, ChevronRight, Plus, Volume2, VolumeX, MessageCircle, Radio, Heart } from "lucide-react";
+import { LocationFilterContext } from "../hooks/useLocationFilter";
+import { apiFetch, resolveMediaUrl } from "../lib/api";
+import useMe from "../hooks/useMe";
+import StoryComposer from "./StoryComposer";
+
+/* ─── Types ─────────────────────────────────────────────── */
+type StoryItem = {
+  id: string;
+  mediaUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
+  expiresAt: string;
+  createdAt: string;
+  likeCount?: number;
+  likedByMe?: boolean;
+};
+
+type StoryGroup = {
+  userId: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  profileHref: string;
+  stories: StoryItem[];
+};
+
+type LiveStreamItem = {
+  id: string;
+  title: string | null;
+  viewerCount: number;
+  host: { id: string; displayName: string; username: string; avatarUrl: string | null };
+};
+
+const STORY_DURATION_MS = 5000;
+
+/* ─── StoryViewer ───────────────────────────────────────── */
+function StoryViewer({
+  groups,
+  initialGroupIndex,
+  onClose,
+  onLikeChanged,
+}: {
+  groups: StoryGroup[];
+  initialGroupIndex: number;
+  onClose: () => void;
+  onLikeChanged: (storyId: string, liked: boolean, likeCount: number) => void;
+}) {
+  const [groupIdx, setGroupIdx] = useState(initialGroupIndex);
+  const [storyIdx, setStoryIdx] = useState(0);
+  const [progress, setProgress] = useState(0);
+  const [muted, setMuted] = useState(true);
+  const [likePending, setLikePending] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
+
+  const group = groups[groupIdx];
+  const story = group?.stories[storyIdx];
+  const isVideo = story?.mediaType === "VIDEO";
+  const totalStories = group?.stories.length ?? 0;
+
+  const handleLike = useCallback(async () => {
+    if (!story || likePending) return;
+    const prevLiked = !!story.likedByMe;
+    const prevCount = story.likeCount ?? 0;
+    // Optimistic update
+    onLikeChanged(story.id, !prevLiked, prevLiked ? Math.max(0, prevCount - 1) : prevCount + 1);
+    setLikePending(true);
+    try {
+      const res = await apiFetch<{ liked: boolean; likeCount: number }>(
+        `/stories/${story.id}/like`,
+        { method: "POST" },
+      );
+      onLikeChanged(story.id, res.liked, res.likeCount);
+    } catch {
+      // Revert on error
+      onLikeChanged(story.id, prevLiked, prevCount);
+    } finally {
+      setLikePending(false);
+    }
+  }, [story, likePending, onLikeChanged]);
+
+  const goNext = useCallback(() => {
+    if (storyIdx < totalStories - 1) {
+      setStoryIdx((i) => i + 1);
+      setProgress(0);
+    } else if (groupIdx < groups.length - 1) {
+      setGroupIdx((g) => g + 1);
+      setStoryIdx(0);
+      setProgress(0);
+    } else {
+      onClose();
+    }
+  }, [storyIdx, totalStories, groupIdx, groups.length, onClose]);
+
+  const goPrev = useCallback(() => {
+    if (storyIdx > 0) {
+      setStoryIdx((i) => i - 1);
+      setProgress(0);
+    } else if (groupIdx > 0) {
+      const prevGroup = groups[groupIdx - 1];
+      setGroupIdx((g) => g - 1);
+      setStoryIdx(prevGroup.stories.length - 1);
+      setProgress(0);
+    }
+  }, [storyIdx, groupIdx, groups]);
+
+  useEffect(() => {
+    if (isVideo) return;
+    setProgress(0);
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTimeRef.current;
+      const pct = Math.min(100, (elapsed / STORY_DURATION_MS) * 100);
+      setProgress(pct);
+      if (pct >= 100) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        goNext();
+      }
+    }, 50);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [storyIdx, groupIdx, isVideo, goNext]);
+
+  useEffect(() => {
+    if (!isVideo || !videoRef.current) return;
+    const vid = videoRef.current;
+    const handleEnded = () => goNext();
+    const handleTimeUpdate = () => {
+      if (vid.duration) setProgress((vid.currentTime / vid.duration) * 100);
+    };
+    vid.addEventListener("ended", handleEnded);
+    vid.addEventListener("timeupdate", handleTimeUpdate);
+    vid.muted = muted;
+    vid.play().catch(() => {});
+    return () => {
+      vid.removeEventListener("ended", handleEnded);
+      vid.removeEventListener("timeupdate", handleTimeUpdate);
+    };
+  }, [storyIdx, groupIdx, isVideo, muted, goNext]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      else if (e.key === "ArrowRight") goNext();
+      else if (e.key === "ArrowLeft") goPrev();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [goNext, goPrev, onClose]);
+
+  if (!group || !story) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-50 rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      <div className="relative mx-auto h-[90vh] max-h-[700px] w-full max-w-sm overflow-hidden rounded-2xl bg-black shadow-2xl">
+        {/* Progress bars */}
+        <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">
+          {group.stories.map((_, i) => (
+            <div key={i} className="h-0.5 flex-1 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full bg-white transition-none"
+                style={{
+                  width: i < storyIdx ? "100%" : i === storyIdx ? `${progress}%` : "0%",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Author */}
+        <div className="absolute top-6 left-3 right-3 z-20 flex items-center gap-2">
+          {group.avatarUrl ? (
+            <img
+              src={resolveMediaUrl(group.avatarUrl) ?? undefined}
+              alt={group.displayName}
+              className="h-9 w-9 rounded-full object-cover border-2 border-white/30"
+              decoding="async"
+            />
+          ) : (
+            <div className="h-9 w-9 rounded-full bg-fuchsia-600 flex items-center justify-center text-white text-sm font-bold">
+              {group.displayName[0]?.toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-semibold text-white">{group.displayName}</p>
+            <p className="text-[10px] text-white/50">
+              {new Date(story.createdAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+          </div>
+          {isVideo && (
+            <button
+              onClick={() => setMuted((v) => !v)}
+              className="ml-auto rounded-full bg-black/40 p-1.5 text-white"
+            >
+              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Media */}
+        {isVideo ? (
+          <video
+            ref={videoRef}
+            key={`${groupIdx}-${storyIdx}`}
+            src={resolveMediaUrl(story.mediaUrl) ?? undefined}
+            className="h-full w-full object-cover"
+            muted={muted}
+            playsInline
+            autoPlay
+          />
+        ) : (
+          <img
+            key={`${groupIdx}-${storyIdx}`}
+            src={resolveMediaUrl(story.mediaUrl) ?? undefined}
+            alt=""
+            className="h-full w-full object-cover"
+            decoding="async"
+          />
+        )}
+
+        {/* Tap zones */}
+        <button onClick={goPrev} className="absolute left-0 top-0 h-full w-1/3 z-10" aria-label="Anterior" />
+        <button onClick={goNext} className="absolute right-0 top-0 h-full w-1/3 z-10" aria-label="Siguiente" />
+
+        {/* Bottom CTAs - Conversion focused */}
+        <div className="absolute bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-black/80 to-transparent">
+          <div className="flex gap-2 items-center">
+            <button
+              onClick={(e) => { e.stopPropagation(); handleLike(); }}
+              disabled={likePending}
+              aria-label={story.likedByMe ? "Quitar like" : "Dar like"}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-semibold backdrop-blur transition ${
+                story.likedByMe
+                  ? "bg-rose-500/20 border-rose-400/60 text-rose-200 hover:bg-rose-500/30"
+                  : "bg-white/10 border-white/20 text-white hover:bg-white/20"
+              }`}
+            >
+              <Heart
+                className={`h-4 w-4 transition-transform ${story.likedByMe ? "fill-rose-400 text-rose-400 scale-110" : ""}`}
+              />
+              <span className="tabular-nums">{story.likeCount ?? 0}</span>
+            </button>
+            <Link
+              href={`/chat/${group.userId}`}
+              onClick={onClose}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-600 to-violet-600 py-2.5 text-sm font-semibold text-white hover:brightness-110 transition shadow-[0_8px_20px_rgba(168,85,247,0.3)]"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Enviar mensaje
+            </Link>
+            <Link
+              href={group.profileHref}
+              onClick={onClose}
+              className="flex items-center justify-center rounded-xl bg-white/10 border border-white/20 backdrop-blur px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/20 transition"
+            >
+              Ver perfil
+            </Link>
+          </div>
+        </div>
+
+        {/* Desktop side arrows */}
+        {groupIdx > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setGroupIdx((g) => g - 1); setStoryIdx(0); setProgress(0); }}
+            className="absolute -left-14 top-1/2 -translate-y-1/2 hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+        )}
+        {groupIdx < groups.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setGroupIdx((g) => g + 1); setStoryIdx(0); setProgress(0); }}
+            className="absolute -right-14 top-1/2 -translate-y-1/2 hidden sm:flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Stories row ───────────────────────────────────────── */
+export default function Stories() {
+  const locationCtx = useContext(LocationFilterContext);
+  const effectiveLoc = locationCtx?.effectiveLocation ?? null;
+  const router = useRouter();
+  const { me } = useMe();
+
+  const isProfessional = (me?.user?.profileType ?? "").toUpperCase() === "PROFESSIONAL";
+  const canUpload = isProfessional;
+
+  const [groups, setGroups] = useState<StoryGroup[]>([]);
+  const [liveStreams, setLiveStreams] = useState<LiveStreamItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [viewerGroupIdx, setViewerGroupIdx] = useState<number | null>(null);
+  // Publicar abre el composer encima del inicio: la profesional no sale de la
+  // pantalla en la que está ni pierde el scroll.
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [justPublished, setJustPublished] = useState<string | null>(null);
+
+  /* La fila se desplaza a lo horizontal y en el teléfono no hay barra de
+     scroll: sin estas flechas no se ve que a la derecha hay más perfiles. */
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const updateScrollHints = useCallback(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setCanScrollLeft(el.scrollLeft > 8);
+    setCanScrollRight(el.scrollLeft < max - 8);
+  }, []);
+
+  const scrollRow = useCallback((direction: 1 | -1) => {
+    const el = rowRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * Math.max(160, el.clientWidth * 0.75), behavior: "smooth" });
+  }, []);
+
+  const loadGroups = useCallback(
+    () =>
+      apiFetch<{ stories: StoryGroup[] }>("/stories/active")
+        .then((d) => setGroups(d.stories ?? []))
+        .catch(() => setGroups([])),
+    [],
+  );
+
+  useEffect(() => {
+    let done = 0;
+    const checkDone = () => { done++; if (done >= 2) setLoading(false); };
+
+    loadGroups().finally(checkDone);
+
+    apiFetch<{ streams: LiveStreamItem[] }>("/live/active")
+      .then((d) => setLiveStreams(d.streams ?? []))
+      .catch(() => setLiveStreams([]))
+      .finally(checkDone);
+  }, [loadGroups]);
+
+  useEffect(() => {
+    if (!justPublished) return;
+    const t = setTimeout(() => setJustPublished(null), 3000);
+    return () => clearTimeout(t);
+  }, [justPublished]);
+
+  useEffect(() => {
+    updateScrollHints();
+    window.addEventListener("resize", updateScrollHints);
+    return () => window.removeEventListener("resize", updateScrollHints);
+  }, [updateScrollHints, loading, groups.length, liveStreams.length]);
+
+  const handleGoLive = () => {
+    // Navigate to the live panel — the professional starts from there
+    router.push("/live");
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <div className="mb-2 flex items-center gap-2">
+          <div className="h-4 w-4 rounded bg-white/5 animate-pulse" />
+          <div className="h-3 w-20 rounded bg-white/5 animate-pulse" />
+        </div>
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 flex flex-col items-center gap-2">
+              <div className="h-16 w-16 rounded-full bg-white/5 animate-pulse" />
+              <div className="h-2 w-12 rounded bg-white/5 animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const totalActive = groups.length + liveStreams.length;
+  if (totalActive === 0 && !canUpload) return null;
+
+  return (
+    <>
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-white/90">Historias</span>
+          {totalActive > 0 && (
+            <span className="rounded-full bg-fuchsia-500/15 border border-fuchsia-500/20 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300">
+              {totalActive} activas
+            </span>
+          )}
+          {liveStreams.length > 0 && (
+            <span className="rounded-full bg-red-500/15 border border-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-300 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+              {liveStreams.length} en vivo
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {isProfessional && (
+            <button
+              onClick={handleGoLive}
+              className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 transition font-medium"
+            >
+              <Radio className="h-3 w-3" />
+              Ir en vivo
+            </button>
+          )}
+          {isProfessional && (
+            <button
+              type="button"
+              onClick={() => setComposerOpen(true)}
+              className="text-[11px] text-fuchsia-400 hover:text-fuchsia-300 transition font-medium"
+            >
+              + Subir historia
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="relative">
+        <div
+          ref={rowRef}
+          onScroll={updateScrollHints}
+          className="flex gap-4 overflow-x-auto scrollbar-hide pb-1"
+        >
+          {/* Go Live button for professionals — navigates to live panel */}
+          {isProfessional && (
+            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+              <button
+                onClick={handleGoLive}
+                className="relative h-16 w-16 rounded-full border-2 border-dashed border-red-500/50 bg-red-500/5 flex items-center justify-center text-red-400 hover:border-red-400 hover:bg-red-500/10 transition hover:shadow-[0_0_20px_rgba(239,68,68,0.25)]"
+              >
+                <Radio className="h-6 w-6" />
+              </button>
+              <span className="text-[11px] text-red-300/60 font-medium">En vivo</span>
+            </div>
+          )}
+
+          {/* Upload story button for professionals */}
+          {canUpload && (
+            <div className="flex-shrink-0 flex flex-col items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setComposerOpen(true)}
+                aria-label="Subir historia"
+                className="relative h-16 w-16 rounded-full border-2 border-dashed border-fuchsia-500/50 bg-fuchsia-500/5 flex items-center justify-center text-fuchsia-400 hover:border-fuchsia-400 hover:bg-fuchsia-500/10 transition hover:shadow-[0_0_20px_rgba(168,85,247,0.25)]"
+              >
+                <Plus className="h-6 w-6" />
+              </button>
+              <span className="text-[11px] text-fuchsia-300/60 font-medium">Tu historia</span>
+            </div>
+          )}
+
+          {/* Active live streams — shown first with red ring */}
+          {liveStreams.map((s) => (
+            <Link
+              key={`live-${s.id}`}
+              href={`/live/${s.id}`}
+              className="flex-shrink-0 flex flex-col items-center gap-2 group"
+            >
+              <div className="relative h-16 w-16 rounded-full p-[3px] bg-gradient-to-tr from-red-600 via-red-500 to-orange-500 group-hover:shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-shadow">
+                <div className="h-full w-full rounded-full overflow-hidden bg-[#111] border-2 border-[#08090f]">
+                  {s.host.avatarUrl ? (
+                    <img
+                      src={resolveMediaUrl(s.host.avatarUrl) ?? undefined}
+                      alt={s.host.displayName}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br from-red-700/50 to-orange-700/50">
+                      {s.host.displayName[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <span className="absolute bottom-0 right-0 flex items-center gap-0.5 rounded-full bg-red-600 px-1.5 py-0.5 text-[8px] font-bold text-white shadow-lg border border-[#08090f]">
+                  <span className="h-1 w-1 animate-pulse rounded-full bg-white" />
+                  LIVE
+                </span>
+              </div>
+              <span className="max-w-[72px] truncate text-[11px] text-white/60 font-medium group-hover:text-white/80 transition">
+                {s.host.displayName.split(" ")[0]}
+              </span>
+            </Link>
+          ))}
+
+          {/* Stories */}
+          {groups.map((g, i) => (
+            <button
+              key={g.userId}
+              onClick={() => setViewerGroupIdx(i)}
+              className="flex-shrink-0 flex flex-col items-center gap-2 group"
+            >
+              <div className="relative h-16 w-16 rounded-full p-[3px] bg-gradient-to-tr from-fuchsia-600 via-violet-500 to-pink-500 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)] transition-shadow">
+                <div className="h-full w-full rounded-full overflow-hidden bg-[#111] border-2 border-[#08090f]">
+                  {g.avatarUrl ? (
+                    <img
+                      src={resolveMediaUrl(g.avatarUrl) ?? undefined}
+                      alt={g.displayName}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center text-xl font-bold text-white bg-gradient-to-br from-fuchsia-700/50 to-violet-700/50">
+                      {g.displayName[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                {g.stories.some((s) => s.mediaType === "VIDEO") && (
+                  <span className="absolute bottom-0 right-0 h-5 w-5 rounded-full bg-fuchsia-500 flex items-center justify-center text-[9px] text-white font-bold shadow-lg border border-[#08090f]">
+                    ▶
+                  </span>
+                )}
+              </div>
+              <span className="max-w-[72px] truncate text-[11px] text-white/60 font-medium group-hover:text-white/80 transition">
+                {g.displayName.split(" ")[0]}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* Flechas de desplazamiento: aparecen sólo hacia el lado que queda por
+            recorrer, a la altura de las fotos. */}
+        {canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollRow(-1)}
+            aria-label="Ver perfiles anteriores"
+            className="absolute left-0 top-8 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur transition hover:bg-black/85"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        )}
+        {canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollRow(1)}
+            aria-label="Ver más perfiles"
+            className="absolute right-0 top-8 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-black/70 text-white shadow-lg backdrop-blur transition hover:bg-black/85"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <StoryComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        onPublished={(count) => {
+          setJustPublished(count === 1 ? "Historia publicada" : `${count} historias publicadas`);
+          loadGroups();
+        }}
+      />
+
+      {justPublished && (
+        <div className="fixed bottom-24 left-1/2 z-[70] -translate-x-1/2 rounded-full border border-white/15 bg-black/85 px-4 py-2 text-xs font-medium text-white shadow-lg backdrop-blur">
+          {justPublished}
+        </div>
+      )}
+
+      {viewerGroupIdx !== null && (
+        <StoryViewer
+          groups={groups}
+          initialGroupIndex={viewerGroupIdx}
+          onClose={() => setViewerGroupIdx(null)}
+          onLikeChanged={(storyId, liked, likeCount) => {
+            setGroups((prev) =>
+              prev.map((g) => ({
+                ...g,
+                stories: g.stories.map((s) =>
+                  s.id === storyId ? { ...s, likedByMe: liked, likeCount } : s,
+                ),
+              })),
+            );
+          }}
+        />
+      )}
+    </>
+  );
+}

@@ -1,0 +1,2430 @@
+import { Router } from "express";
+import { prisma } from "../db";
+import { Prisma } from "@prisma/client";
+import { requireAdmin } from "../auth/middleware";
+import { requireFresh2FA } from "../auth/twoFactor";
+import { CreatePostSchema } from "@uzeed/shared";
+import multer from "multer";
+import path from "path";
+import { config } from "../config";
+import { LocalStorageProvider } from "../storage/localStorageProvider";
+import { asyncHandler } from "../lib/asyncHandler";
+import { optimizeImage, optimizeUploadedImage } from "../lib/imageOptimizer";
+import { isUUID } from "../lib/validators";
+import {
+  PROFESSIONAL_PHONE_REGEX,
+  samePhone,
+} from "../profile/phoneChange";
+import {
+  displayNameError,
+  normalizeDisplayName,
+} from "../profile/nameChange";
+
+export const adminRouter = Router();
+
+const storageProvider = new LocalStorageProvider({
+  baseDir: config.storageDir,
+  publicPathPrefix: `${config.apiUrl.replace(/\/$/, "")}/uploads`,
+});
+
+const mediaFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
+  const mime = (file.mimetype || "").toLowerCase();
+  if (!mime.startsWith("image/") && !mime.startsWith("video/")) {
+    return cb(new Error("INVALID_FILE_TYPE"));
+  }
+  return cb(null, true);
+};
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: async (_req, _file, cb) => {
+      await storageProvider.ensureBaseDir();
+      cb(null, config.storageDir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || "";
+      const safeBase = path
+        .basename(file.originalname, ext)
+        .replace(/[^a-zA-Z0-9_-]/g, "");
+      const name = `${Date.now()}-${safeBase}${ext}`;
+      cb(null, name);
+    },
+  }),
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: mediaFilter,
+});
+
+adminRouter.use(requireAdmin);
+
+adminRouter.get(
+  "/stats",
+  asyncHandler(async (_req, res) => {
+    const [users, posts, payments] = await Promise.all([
+      prisma.user.count(),
+      prisma.post.count(),
+      prisma.payment.count(),
+    ]);
+    return res.json({ users, posts, payments });
+  }),
+);
+
+adminRouter.get(
+  "/control-center",
+  asyncHandler(async (req, res) => {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const adminId = req.session.userId!;
+
+    const [
+      activeUsersToday,
+      pendingVerifications,
+      pendingDeposits,
+      pendingWithdrawals,
+      pendingReportsCount,
+      deposits,
+      withdrawals,
+      recentProfiles,
+      forumPosts,
+      adminNotificationsRaw,
+    ] = await Promise.all([
+      prisma.user.count({
+        where: {
+          OR: [{ isOnline: true }, { lastSeen: { gte: startOfDay } }],
+        },
+      }),
+      prisma.user.count({
+        where: {
+          isVerified: false,
+          profileType: { in: ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] },
+        },
+      }),
+      prisma.tokenDeposit.count({ where: { status: "PENDING" } }),
+      prisma.withdrawalRequest.count({ where: { status: "PENDING" } }),
+      Promise.resolve(0),
+      prisma.tokenDeposit.findMany({
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        include: {
+          wallet: { include: { user: { select: { username: true } } } },
+        },
+      }),
+      prisma.withdrawalRequest.findMany({
+        take: 3,
+        orderBy: { createdAt: "desc" },
+        include: {
+          wallet: { include: { user: { select: { username: true } } } },
+        },
+      }),
+      prisma.user.findMany({
+        where: {
+          profileType: { in: ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] },
+        },
+        take: 2,
+        orderBy: { createdAt: "desc" },
+        select: { username: true, createdAt: true },
+      }),
+      prisma.forumPost.findMany({
+        take: 2,
+        orderBy: { createdAt: "desc" },
+        include: { author: { select: { username: true } } },
+      }),
+      prisma.notification.findMany({
+        where: { userId: adminId },
+        orderBy: { createdAt: "desc" },
+        take: 50,
+        select: { id: true, createdAt: true, readAt: true, data: true },
+      }),
+    ]);
+
+    const activity = [
+      ...deposits.map((item) => ({
+        type: "deposit_submitted",
+        label: "Nuevo depósito enviado",
+        user: item.wallet.user.username,
+        timestamp: item.createdAt.toISOString(),
+      })),
+      ...withdrawals.map((item) => ({
+        type: "withdrawal_requested",
+        label: "Nueva solicitud de retiro",
+        user: item.wallet.user.username,
+        timestamp: item.createdAt.toISOString(),
+      })),
+      ...recentProfiles.map((item) => ({
+        type: "profile_registered",
+        label: "Nuevo perfil registrado",
+        user: item.username,
+        timestamp: item.createdAt.toISOString(),
+      })),
+      ...forumPosts.map((item) => ({
+        type: "forum_comment",
+        label: "Nuevo comentario en foro",
+        user: item.author.username,
+        timestamp: item.createdAt.toISOString(),
+      })),
+    ]
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )
+      .slice(0, 10);
+
+    const notifications = adminNotificationsRaw
+      .map((n) => ({ ...n, data: (n.data || {}) as any }))
+      .filter((n) =>
+        [
+          "deposit_submitted",
+          "withdrawal_requested",
+          "profile_verification_requested",
+          "content_reported",
+          "deletion_requested",
+        ].includes(String(n.data.type || "")),
+      )
+      .map((n) => {
+        const data = n.data;
+        return {
+          id: n.id,
+          type: data.type || "admin_event",
+          title: data.title || "Notificación",
+          body: data.body || "Evento administrativo",
+          url: data.url || "/admin",
+          timestamp: n.createdAt.toISOString(),
+          readAt: n.readAt ? n.readAt.toISOString() : null,
+          user: data.user || null,
+          amount: data.amount || null,
+        };
+      });
+
+    const pendingReports =
+      notifications.filter((n) => n.type === "content_reported" && !n.readAt)
+        .length || pendingReportsCount;
+
+    return res.json({
+      metrics: {
+        activeUsersToday,
+        pendingVerifications,
+        pendingDeposits,
+        pendingWithdrawals,
+        pendingReports,
+      },
+      actions: {
+        pendingVerifications,
+        pendingDeposits,
+        pendingWithdrawals,
+        pendingReports,
+      },
+      recentActivity: activity,
+      notifications,
+    });
+  }),
+);
+
+adminRouter.get(
+  "/posts",
+  asyncHandler(async (_req, res) => {
+    const posts = await prisma.post.findMany({
+      orderBy: { createdAt: "desc" },
+      include: { media: true },
+    });
+    return res.json({
+      posts: posts.map((p) => ({
+        ...p,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+        media: p.media.map((m) => ({
+          ...m,
+          createdAt: m.createdAt.toISOString(),
+        })),
+      })),
+    });
+  }),
+);
+
+adminRouter.post(
+  "/posts",
+  upload.array("files", 10),
+  asyncHandler(async (req, res) => {
+    const { title, body, isPublic, price } = req.body as Record<string, string>;
+    const payload = {
+      title,
+      body,
+      isPublic: isPublic === "true",
+      price: price ? Number(price) : 0,
+    };
+    const parsed = CreatePostSchema.safeParse(payload);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: "VALIDATION", details: parsed.error.flatten() });
+
+    const post = await prisma.post.create({
+      data: {
+        authorId: req.session.userId!,
+        title: parsed.data.title,
+        body: parsed.data.body,
+        isPublic: parsed.data.isPublic,
+        price: parsed.data.price,
+      },
+    });
+
+    const files = (req.files as Express.Multer.File[]) ?? [];
+    const media = [];
+    for (const file of files) {
+      const mime = (file.mimetype || "").toLowerCase();
+      const type = mime.startsWith("video/") ? "VIDEO" : "IMAGE";
+      const url = storageProvider.publicUrl(file.filename);
+      media.push(
+        await prisma.media.create({ data: { postId: post.id, type, url } }),
+      );
+    }
+    const hasVideo = media.some((m) => m.type === "VIDEO");
+    if (hasVideo) {
+      await prisma.post.update({
+        where: { id: post.id },
+        data: { type: "VIDEO" },
+      });
+    }
+
+    return res.json({ post: { ...post, media } });
+  }),
+);
+
+adminRouter.put(
+  "/posts/:id",
+  asyncHandler(async (req, res) => {
+    const parsed = CreatePostSchema.partial().safeParse(req.body);
+    if (!parsed.success)
+      return res
+        .status(400)
+        .json({ error: "VALIDATION", details: parsed.error.flatten() });
+
+    const post = await prisma.post.update({
+      where: { id: req.params.id },
+      data: parsed.data,
+    });
+    return res.json({ post });
+  }),
+);
+
+adminRouter.delete(
+  "/posts/:id",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    await prisma.post.delete({ where: { id: req.params.id } });
+    return res.json({ ok: true });
+  }),
+);
+
+adminRouter.post(
+  "/posts/:id/media",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+    const mime = (req.file.mimetype || "").toLowerCase();
+    const type = mime.startsWith("video/") ? "VIDEO" : "IMAGE";
+    const url = storageProvider.publicUrl(req.file.filename);
+
+    const media = await prisma.media.create({
+      data: { postId: req.params.id, type, url },
+    });
+    if (type === "VIDEO") {
+      await prisma.post.update({
+        where: { id: req.params.id },
+        data: { type: "VIDEO" },
+      });
+    }
+
+    return res.json({ media });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   PROFILES (Admin Management)
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/profiles",
+  asyncHandler(async (req, res) => {
+    const { profileType, isActive, q, limit, offset } = req.query as Record<
+      string,
+      string | undefined
+    >;
+    const take = Math.min(parseInt(limit || "50", 10) || 50, 200);
+    const skip = parseInt(offset || "0", 10) || 0;
+
+    const where: any = {};
+    if (profileType) where.profileType = profileType;
+    if (isActive !== undefined) where.isActive = isActive === "true";
+    if (q) {
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const [profiles, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          coverUrl: true,
+          profileType: true,
+          isActive: true,
+          isOnline: true,
+          lastSeen: true,
+          city: true,
+          gender: true,
+          phone: true,
+          isVerified: true,
+          profileTags: true,
+          tier: true,
+          role: true,
+          membershipExpiresAt: true,
+          completedServices: true,
+          profileViews: true,
+          baseRate: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+        skip,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return res.json({ profiles, total });
+  }),
+);
+
+const ALLOWED_GENDERS = new Set(["MALE", "FEMALE", "OTHER"]);
+
+const ADMIN_CONTROLLED_LABELS = new Set([
+  "premium",
+  "verificada",
+  "profesional con examenes",
+]);
+
+adminRouter.put(
+  "/profiles/:id/labels",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { premium, verified, exams } = req.body ?? {};
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { id: true, profileTags: true },
+    });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const current = Array.isArray(user.profileTags) ? user.profileTags : [];
+    const baseTags = current.filter((tag) => !ADMIN_CONTROLLED_LABELS.has(tag));
+
+    const nextTags = [...baseTags];
+    if (premium === true) nextTags.push("premium");
+    if (verified === true) nextTags.push("verificada");
+    if (exams === true) nextTags.push("profesional con examenes");
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { profileTags: nextTags },
+      select: { id: true, username: true, profileTags: true },
+    });
+
+    return res.json({ profile: updated });
+  }),
+);
+
+adminRouter.put(
+  "/profiles/:id/toggle",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { isActive: true },
+    });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isActive: !user.isActive },
+      select: { id: true, username: true, isActive: true },
+    });
+    return res.json({ profile: updated });
+  }),
+);
+
+adminRouter.put(
+  "/profiles/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const {
+      isActive,
+      tier,
+      role,
+      membershipExpiresAt,
+      baseRate,
+      gender,
+      phone,
+      displayName,
+    } = req.body ?? {};
+
+    const data: any = {};
+    if (isActive !== undefined) data.isActive = Boolean(isActive);
+    if (gender !== undefined) {
+      // El género decide en qué listados aparece el perfil (el home trata a los
+      // perfiles sin género como femeninos), así que el admin puede corregirlo
+      // cuando alguien se registró con el género equivocado.
+      if (gender === null || gender === "") {
+        data.gender = null;
+      } else if (ALLOWED_GENDERS.has(String(gender).toUpperCase())) {
+        data.gender = String(gender).toUpperCase();
+      } else {
+        return res.status(400).json({
+          error: "VALIDATION",
+          message: "Género inválido. Usa MALE, FEMALE, OTHER o null.",
+        });
+      }
+    }
+    if (tier !== undefined) data.tier = tier;
+    if (role !== undefined) data.role = role;
+    if (membershipExpiresAt !== undefined) {
+      data.membershipExpiresAt = membershipExpiresAt
+        ? new Date(membershipExpiresAt)
+        : null;
+    }
+    if (displayName !== undefined) {
+      // El nombre está bloqueado para la profesional (cambiarlo pasa por una
+      // solicitud), pero el admin lo corrige aquí: es el mismo caso del
+      // teléfono mal escrito, y evita tener que aprobar una solicitud que la
+      // profesional todavía no mandó.
+      const nextName = normalizeDisplayName(displayName);
+      const issue = displayNameError(nextName);
+      if (issue) {
+        return res.status(400).json({ error: "VALIDATION", message: issue });
+      }
+      data.displayName = nextName;
+    }
+    if (phone !== undefined) {
+      // El número de WhatsApp es la vía de contacto del anuncio. La
+      // profesional no lo cambia sola (pasa por solicitud), pero el admin sí
+      // puede corregirlo desde aquí: es lo que se hacía a mano en la base de
+      // datos cada vez que alguien se registraba con el número mal escrito.
+      if (phone === null || String(phone).trim() === "") {
+        data.phone = null;
+      } else {
+        const trimmed = String(phone).trim().replace(/\s+/g, " ");
+        if (!PROFESSIONAL_PHONE_REGEX.test(trimmed)) {
+          return res.status(400).json({
+            error: "VALIDATION",
+            message:
+              "Número inválido. Usa formato internacional, por ejemplo +56 9 1234 5678.",
+          });
+        }
+        // El mismo número puede estar guardado con o sin espacios, así que se
+        // comparan ambas escrituras antes de dar el número por libre.
+        const compact = trimmed.replace(/[\s-]/g, "");
+        const taken = await prisma.user.findFirst({
+          where: { phone: { in: [trimmed, compact] }, NOT: { id } },
+          select: { id: true, username: true, phone: true },
+        });
+        if (taken && samePhone(taken.phone, trimmed)) {
+          return res.status(409).json({
+            error: "PHONE_TAKEN",
+            message: `Ese número ya está en la cuenta @${taken.username}.`,
+          });
+        }
+        data.phone = trimmed;
+      }
+    }
+    if (baseRate !== undefined) {
+      if (baseRate === null || baseRate === "") {
+        data.baseRate = null;
+      } else {
+        const parsed = Number(baseRate);
+        if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10000000) {
+          return res.status(400).json({
+            error: "VALIDATION",
+            message: "La tarifa debe ser un número entre 0 y 10.000.000 CLP.",
+          });
+        }
+        data.baseRate = Math.round(parsed);
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        isActive: true,
+        tier: true,
+        role: true,
+        gender: true,
+        phone: true,
+        membershipExpiresAt: true,
+        baseRate: true,
+      },
+    });
+    return res.json({ profile: updated });
+  }),
+);
+
+adminRouter.put(
+  "/profiles/:id/avatar",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { mediaId } = req.body ?? {};
+    if (!mediaId || typeof mediaId !== "string") {
+      return res.status(400).json({ error: "VALIDATION", message: "mediaId required" });
+    }
+
+    const media = await prisma.profileMedia.findUnique({
+      where: { id: mediaId },
+      select: { id: true, url: true, type: true, ownerId: true },
+    });
+    if (!media || media.ownerId !== id) {
+      return res.status(404).json({ error: "NOT_FOUND", message: "Media no pertenece al perfil" });
+    }
+    if (media.type !== "IMAGE") {
+      return res.status(400).json({ error: "VALIDATION", message: "Solo imagenes pueden ser avatar" });
+    }
+
+    // Las tarjetas del home muestran la portada y sólo caen al avatar cuando no
+    // hay portada: si sólo cambiáramos el avatar, el perfil seguiría mostrando
+    // la foto anterior. Por eso el admin puede aplicar la foto a ambas.
+    const applyToCover = req.body?.applyToCover !== false;
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: applyToCover
+        ? { avatarUrl: media.url, coverUrl: media.url, coverPositionX: null, coverPositionY: null }
+        : { avatarUrl: media.url },
+      select: { id: true, username: true, avatarUrl: true, coverUrl: true },
+    });
+    return res.json({ profile: updated });
+  }),
+);
+
+adminRouter.delete(
+  "/profiles/:id",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.notification.deleteMany({ where: { userId: id } });
+      await tx.story.deleteMany({ where: { userId: id } });
+      await tx.pushSubscription.deleteMany({ where: { userId: id } });
+      await tx.favorite.deleteMany({
+        where: { OR: [{ userId: id }, { professionalId: id }] },
+      });
+      await tx.profileMedia.deleteMany({ where: { ownerId: id } });
+      await tx.serviceItem.deleteMany({ where: { ownerId: id } });
+      await tx.message.deleteMany({
+        where: { OR: [{ fromId: id }, { toId: id }] },
+      });
+      await tx.user.delete({ where: { id } });
+    });
+
+    return res.json({ ok: true });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   VERIFICATION (Pending Profiles)
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/verification/pending",
+  asyncHandler(async (req, res) => {
+    const { q, limit, offset } = req.query as Record<
+      string,
+      string | undefined
+    >;
+    const take = Math.min(parseInt(limit || "50", 10) || 50, 200);
+    const skip = parseInt(offset || "0", 10) || 0;
+
+    const where: any = {
+      isVerified: false,
+      profileType: { in: ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] },
+    };
+    if (q) {
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { phone: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const [profiles, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          coverUrl: true,
+          profileType: true,
+          isActive: true,
+          phone: true,
+          city: true,
+          address: true,
+          bio: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+        skip,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return res.json({ profiles, total });
+  }),
+);
+
+adminRouter.put(
+  "/verification/:id/approve",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { verifiedByPhone } = req.body ?? {};
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { isVerified: true, profileType: true },
+    });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        isVerified: true,
+        verifiedAt: new Date(),
+        verifiedByPhone: verifiedByPhone ? String(verifiedByPhone) : null,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        isVerified: true,
+        profileType: true,
+      },
+    });
+    return res.json({ profile: updated });
+  }),
+);
+
+adminRouter.put(
+  "/verification/:id/reject",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      select: { isVerified: true },
+    });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { isActive: false },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        isVerified: true,
+        isActive: true,
+      },
+    });
+    return res.json({ profile: updated });
+  }),
+);
+
+// La web ya pedía este endpoint desde el modal de fotos de /admin/profiles,
+// pero sólo existía el de videos: el modal fallaba siempre.
+adminRouter.get("/profiles/:id/media-photos", requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const media = await prisma.profileMedia.findMany({
+    where: { ownerId: id, type: "IMAGE" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, url: true, type: true, createdAt: true, isLocked: true },
+  });
+  return res.json({ media });
+}));
+
+adminRouter.get("/profiles/:id/media-videos", requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const media = await prisma.profileMedia.findMany({
+    where: { ownerId: id, type: "VIDEO" },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, url: true, type: true, createdAt: true },
+  });
+  return res.json({ media });
+}));
+
+/* ══════════════════════════════════════════════════════════════
+   ADMIN PROFILE RATING ("Catador")
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/rating/stats",
+  asyncHandler(async (req, res) => {
+    const adminId = req.session.userId!;
+    const [totalRated, totalProfiles, byType, avgScore, recentlyRated] = await Promise.all([
+      prisma.adminProfileRating.count({ where: { adminId } }),
+      prisma.user.count({
+        where: { profileType: { in: ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] }, isActive: true },
+      }),
+      prisma.user.groupBy({
+        by: ["profileType"],
+        where: { profileType: { in: ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] }, isActive: true },
+        _count: true,
+      }),
+      prisma.adminProfileRating.aggregate({ where: { adminId }, _avg: { overallScore: true } }),
+      prisma.adminProfileRating.findMany({
+        where: { adminId },
+        orderBy: { updatedAt: "desc" },
+        take: 5,
+        select: {
+          overallScore: true,
+          updatedAt: true,
+          profile: { select: { id: true, displayName: true, username: true, avatarUrl: true } },
+        },
+      }),
+    ]);
+
+    // Count unrated per type
+    const unratedByType: Record<string, number> = {};
+    for (const g of byType) {
+      const rated = await prisma.adminProfileRating.count({
+        where: {
+          adminId,
+          profile: { profileType: g.profileType as any, isActive: true },
+        },
+      });
+      unratedByType[g.profileType] = g._count - rated;
+    }
+
+    return res.json({
+      totalRated,
+      totalProfiles,
+      unratedByType,
+      avgScore: avgScore._avg.overallScore ?? 0,
+      recentlyRated,
+    });
+  }),
+);
+
+adminRouter.get(
+  "/rating/queue",
+  asyncHandler(async (req, res) => {
+    const adminId = req.session.userId!;
+    const limit = Math.min(Number(req.query.limit) || 20, 50);
+    const offset = Number(req.query.offset) || 0;
+    const profileType = req.query.profileType as string | undefined;
+    const city = req.query.city as string | undefined;
+    const q = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+    const unratedOnly = req.query.unratedOnly === "true";
+
+    const where: any = {
+      profileType: { in: profileType ? [profileType] : ["PROFESSIONAL", "ESTABLISHMENT", "SHOP"] },
+    };
+    if (city) where.city = { contains: city, mode: "insensitive" };
+    if (q) {
+      /* Buscar es para llegar a un perfil concreto (normalmente a cambiarle la
+         foto que sale en el inicio), así que no se le aplican los filtros de
+         la cola: ni "sin calificar" ni el de activos, que son los que hacían
+         que el perfil buscado simplemente no apareciera. */
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+      ];
+    } else {
+      where.isActive = true;
+      if (unratedOnly) {
+        where.adminRatingsReceived = { none: { adminId } };
+      }
+    }
+
+    const [profiles, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        orderBy: [{ createdAt: "desc" }],
+        skip: offset,
+        take: limit,
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          displayName: true,
+          avatarUrl: true,
+          coverUrl: true,
+          profileType: true,
+          city: true,
+          gender: true,
+          tier: true,
+          bio: true,
+          isActive: true,
+          isVerified: true,
+          profileTags: true,
+          serviceTags: true,
+          profileViews: true,
+          completedServices: true,
+          adminQualityScore: true,
+          createdAt: true,
+          /* Antes eran seis: con más fotos publicadas, la que el admin quería
+             poner en el inicio no estaba entre las opciones. */
+          profileMedia: {
+            take: 40,
+            orderBy: { createdAt: "desc" },
+            select: { id: true, url: true, type: true },
+          },
+          adminRatingsReceived: {
+            where: { adminId },
+            take: 1,
+            select: {
+              ratingPhotoQuality: true,
+              ratingCompleteness: true,
+              ratingPresentation: true,
+              ratingAuthenticity: true,
+              ratingValue: true,
+              overallScore: true,
+              notes: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    const mapped = profiles.map((p) => ({
+      ...p,
+      existingRating: p.adminRatingsReceived[0] ?? null,
+      adminRatingsReceived: undefined,
+    }));
+
+    return res.json({ profiles: mapped, total });
+  }),
+);
+
+adminRouter.get(
+  "/rating/:profileId",
+  asyncHandler(async (req, res) => {
+    const adminId = req.session.userId!;
+    const { profileId } = req.params;
+    const rating = await prisma.adminProfileRating.findUnique({
+      where: { profileId_adminId: { profileId, adminId } },
+    });
+    return res.json({ rating });
+  }),
+);
+
+adminRouter.post(
+  "/rating/:profileId",
+  asyncHandler(async (req, res) => {
+    const adminId = req.session.userId!;
+    const { profileId } = req.params;
+    const { ratingPhotoQuality, ratingCompleteness, ratingPresentation, ratingAuthenticity, ratingValue, notes } = req.body;
+
+    // Validate profile exists
+    const targetUser = await prisma.user.findUnique({ where: { id: profileId }, select: { id: true } });
+    if (!targetUser) return res.status(404).json({ error: "Perfil no encontrado" });
+
+    // Validate scores are integers 1-10
+    const scores = [ratingPhotoQuality, ratingCompleteness, ratingPresentation, ratingAuthenticity, ratingValue];
+    for (const s of scores) {
+      if (typeof s !== "number" || !Number.isInteger(s) || s < 1 || s > 10) {
+        return res.status(400).json({ error: "Cada puntuacion debe ser un entero entre 1 y 10" });
+      }
+    }
+
+    const overallScore = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10;
+
+    const rating = await prisma.adminProfileRating.upsert({
+      where: { profileId_adminId: { profileId, adminId } },
+      create: { profileId, adminId, ratingPhotoQuality, ratingCompleteness, ratingPresentation, ratingAuthenticity, ratingValue, overallScore, notes },
+      update: { ratingPhotoQuality, ratingCompleteness, ratingPresentation, ratingAuthenticity, ratingValue, overallScore, notes },
+    });
+
+    // Recompute cached adminQualityScore on User (average across all admins)
+    const agg = await prisma.adminProfileRating.aggregate({
+      where: { profileId },
+      _avg: { overallScore: true },
+    });
+    const adminQualityScore = agg._avg.overallScore
+      ? Math.round(agg._avg.overallScore * 10) / 10
+      : null;
+    const profile = await prisma.user.update({
+      where: { id: profileId },
+      data: { adminQualityScore },
+      select: { email: true, displayName: true },
+    });
+
+    // Send quality review email to the professional
+    try {
+      const { sendQualityReviewEmail } = await import("../lib/notificationEmail");
+      await sendQualityReviewEmail(profile.email, {
+        professionalName: profile.displayName || "profesional",
+        ratingPhotoQuality,
+        ratingCompleteness,
+        ratingPresentation,
+        ratingAuthenticity,
+        ratingValue,
+        overallScore,
+      });
+    } catch (err) {
+      console.error("[admin/rating] email failed", err);
+    }
+
+    return res.json({ rating, adminQualityScore });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   BANNERS (Home Ads)
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/banners",
+  asyncHandler(async (_req, res) => {
+    const banners = await prisma.banner.findMany({
+      orderBy: [
+        { sortOrder: "asc" },
+        { createdAt: "desc" },
+      ],
+    });
+    return res.json({ banners });
+  }),
+);
+
+adminRouter.post(
+  "/banners",
+  asyncHandler(async (req, res) => {
+    const {
+      title,
+      imageUrl,
+      linkUrl,
+      position,
+      isActive,
+      sortOrder,
+      professionalId,
+      promoImageUrl,
+      startsAt,
+      endsAt,
+      adTier,
+      imageFocusX,
+      imageFocusY,
+      imageZoom,
+    } =
+      req.body ?? {};
+    if (!title)
+      return res
+        .status(400)
+        .json({ error: "VALIDATION", message: "title required" });
+
+    const kind = position ? String(position).toUpperCase() : "RIGHT";
+    const isPopupPromo = kind === "POPUP_PROMO";
+
+    if (isPopupPromo) {
+      if (!professionalId) {
+        return res.status(400).json({ error: "VALIDATION", message: "professionalId required for popup promo" });
+      }
+      if (!promoImageUrl && !imageUrl) {
+        return res.status(400).json({ error: "VALIDATION", message: "promoImageUrl required for popup promo" });
+      }
+    } else if (!imageUrl) {
+      return res.status(400).json({ error: "VALIDATION", message: "imageUrl required" });
+    }
+
+    const banner = await prisma.banner.create({
+      data: {
+        title: String(title),
+        imageUrl: String(imageUrl || promoImageUrl || ""),
+        linkUrl: linkUrl ? String(linkUrl) : null,
+        position: kind,
+        isActive: typeof isActive === "boolean" ? isActive : true,
+        sortOrder:
+          typeof sortOrder === "number"
+            ? sortOrder
+            : parseInt(String(sortOrder ?? "0"), 10) || 0,
+        professionalId: professionalId ? String(professionalId) : null,
+        promoImageUrl: promoImageUrl ? String(promoImageUrl) : null,
+        startsAt: startsAt ? new Date(String(startsAt)) : null,
+        endsAt: endsAt ? new Date(String(endsAt)) : null,
+        adTier: String(adTier || "STANDARD").toUpperCase() === "GOLD" ? "GOLD" : "STANDARD",
+        imageFocusX: typeof imageFocusX === "number" ? Math.max(0, Math.min(100, imageFocusX)) : 50,
+        imageFocusY: typeof imageFocusY === "number" ? Math.max(0, Math.min(100, imageFocusY)) : 20,
+        imageZoom: typeof imageZoom === "number" ? Math.max(1, Math.min(3, imageZoom)) : 1,
+      },
+    });
+    return res.json({ banner });
+  }),
+);
+
+adminRouter.post(
+  "/banners/upload",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file)
+      return res
+        .status(400)
+        .json({ error: "VALIDATION", message: "file required" });
+    const url = storageProvider.publicUrl(req.file.filename);
+    return res.json({ url });
+  }),
+);
+
+adminRouter.put(
+  "/banners/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const {
+      title,
+      imageUrl,
+      linkUrl,
+      position,
+      isActive,
+      sortOrder,
+      professionalId,
+      promoImageUrl,
+      startsAt,
+      endsAt,
+      adTier,
+      imageFocusX,
+      imageFocusY,
+      imageZoom,
+    } = req.body ?? {};
+    const banner = await prisma.banner.update({
+      where: { id },
+      data: {
+        ...(title !== undefined ? { title: String(title) } : {}),
+        ...(imageUrl !== undefined ? { imageUrl: String(imageUrl) } : {}),
+        ...(linkUrl !== undefined
+          ? { linkUrl: linkUrl ? String(linkUrl) : null }
+          : {}),
+        ...(position !== undefined ? { position: String(position) } : {}),
+        ...(isActive !== undefined ? { isActive: Boolean(isActive) } : {}),
+        ...(sortOrder !== undefined
+          ? {
+              sortOrder:
+                typeof sortOrder === "number"
+                  ? sortOrder
+                  : parseInt(String(sortOrder), 10) || 0,
+            }
+          : {}),
+        ...(professionalId !== undefined ? { professionalId: professionalId ? String(professionalId) : null } : {}),
+        ...(promoImageUrl !== undefined ? { promoImageUrl: promoImageUrl ? String(promoImageUrl) : null } : {}),
+        ...(startsAt !== undefined ? { startsAt: startsAt ? new Date(String(startsAt)) : null } : {}),
+        ...(endsAt !== undefined ? { endsAt: endsAt ? new Date(String(endsAt)) : null } : {}),
+        ...(adTier !== undefined ? { adTier: String(adTier).toUpperCase() === "GOLD" ? "GOLD" : "STANDARD" } : {}),
+        ...(imageFocusX !== undefined ? { imageFocusX: Math.max(0, Math.min(100, Number(imageFocusX) || 50)) } : {}),
+        ...(imageFocusY !== undefined ? { imageFocusY: Math.max(0, Math.min(100, Number(imageFocusY) || 20)) } : {}),
+        ...(imageZoom !== undefined ? { imageZoom: Math.max(1, Math.min(3, Number(imageZoom) || 1)) } : {}),
+      },
+    });
+    return res.json({ banner });
+  }),
+);
+
+adminRouter.delete(
+  "/banners/:id",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await prisma.banner.delete({ where: { id } });
+    return res.json({ ok: true });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   PRICING RULES
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/pricing-rules",
+  asyncHandler(async (_req, res) => {
+    try {
+      const rules: any[] =
+        await prisma.$queryRaw`SELECT id, kind, tier, "priceClp", days, "isActive", "createdAt", "updatedAt" FROM "PricingRule" ORDER BY kind, tier`;
+      return res.json({ rules });
+    } catch {
+      return res.json({ rules: [] });
+    }
+  }),
+);
+
+adminRouter.put(
+  "/pricing-rules",
+  asyncHandler(async (req, res) => {
+    const { rules } = req.body ?? {};
+    if (!Array.isArray(rules))
+      return res
+        .status(400)
+        .json({ error: "VALIDATION", message: "rules array required" });
+
+    const results: any[] = [];
+    for (const r of rules) {
+      if (r.id) {
+        const updated: any[] = await prisma.$queryRaw`
+        UPDATE "PricingRule"
+        SET kind = ${r.kind}::"PricingKind", tier = ${r.tier || null}::"ProfessionalTier",
+            "priceClp" = ${Number(r.priceClp)}, days = ${Number(r.days)},
+            "isActive" = ${Boolean(r.isActive)}, "updatedAt" = now()
+        WHERE id = ${r.id}::uuid
+        RETURNING *`;
+        if (updated.length) results.push(updated[0]);
+      } else {
+        const created: any[] = await prisma.$queryRaw`
+        INSERT INTO "PricingRule" (kind, tier, "priceClp", days, "isActive")
+        VALUES (${r.kind}::"PricingKind", ${r.tier || null}::"ProfessionalTier",
+                ${Number(r.priceClp)}, ${Number(r.days)}, ${Boolean(r.isActive)})
+        RETURNING *`;
+        if (created.length) results.push(created[0]);
+      }
+    }
+
+    const all: any[] =
+      await prisma.$queryRaw`SELECT * FROM "PricingRule" ORDER BY kind, tier`;
+    return res.json({ rules: all });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   QUICK LISTINGS (External Establishments)
+   Admin can add motels, sexshops, etc. without creating a user
+   account. These show on the map and link to the external site.
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/quick-listings",
+  asyncHandler(async (req, res) => {
+    const { categoryId, q, limit, offset } = req.query as Record<string, string | undefined>;
+    const take = Math.min(parseInt(limit || "50", 10) || 50, 200);
+    const skip = parseInt(offset || "0", 10) || 0;
+
+    const where: any = { externalOnly: true };
+    if (categoryId) where.categoryId = categoryId;
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { city: { contains: q, mode: "insensitive" } },
+        { address: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const [listings, total] = await Promise.all([
+      prisma.establishment.findMany({
+        where,
+        include: { category: { select: { id: true, name: true, displayName: true, slug: true } } },
+        orderBy: { createdAt: "desc" },
+        take,
+        skip,
+      }),
+      prisma.establishment.count({ where }),
+    ]);
+
+    return res.json({ listings, total });
+  }),
+);
+
+adminRouter.post(
+  "/quick-listings",
+  asyncHandler(async (req, res) => {
+    const { name, address, city, phone, description, categoryId, websiteUrl, latitude, longitude } = req.body ?? {};
+
+    if (!name || !address || !city || !categoryId) {
+      return res.status(400).json({ error: "VALIDATION", message: "name, address, city and categoryId are required" });
+    }
+
+    const category = await prisma.category.findUnique({ where: { id: categoryId } });
+    if (!category) return res.status(400).json({ error: "VALIDATION", message: "Invalid categoryId" });
+
+    const listing = await prisma.establishment.create({
+      data: {
+        name: String(name),
+        address: String(address),
+        city: String(city),
+        phone: phone ? String(phone) : "",
+        description: description ? String(description) : null,
+        categoryId: String(categoryId),
+        websiteUrl: websiteUrl ? String(websiteUrl) : null,
+        latitude: latitude != null ? Number(latitude) : null,
+        longitude: longitude != null ? Number(longitude) : null,
+        externalOnly: true,
+      },
+      include: { category: { select: { id: true, name: true, displayName: true, slug: true } } },
+    });
+
+    return res.json({ listing });
+  }),
+);
+
+adminRouter.put(
+  "/quick-listings/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { name, address, city, phone, description, categoryId, websiteUrl, latitude, longitude } = req.body ?? {};
+
+    const data: any = {};
+    if (name !== undefined) data.name = String(name);
+    if (address !== undefined) data.address = String(address);
+    if (city !== undefined) data.city = String(city);
+    if (phone !== undefined) data.phone = String(phone);
+    if (description !== undefined) data.description = description ? String(description) : null;
+    if (categoryId !== undefined) data.categoryId = String(categoryId);
+    if (websiteUrl !== undefined) data.websiteUrl = websiteUrl ? String(websiteUrl) : null;
+    if (latitude !== undefined) data.latitude = latitude != null ? Number(latitude) : null;
+    if (longitude !== undefined) data.longitude = longitude != null ? Number(longitude) : null;
+
+    const listing = await prisma.establishment.update({
+      where: { id },
+      data,
+      include: { category: { select: { id: true, name: true, displayName: true, slug: true } } },
+    });
+    return res.json({ listing });
+  }),
+);
+
+adminRouter.delete(
+  "/quick-listings/:id",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    await prisma.establishment.delete({ where: { id } });
+    return res.json({ ok: true });
+  }),
+);
+
+adminRouter.post(
+  "/quick-listings/:id/upload",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+
+    const listing = await prisma.establishment.findUnique({ where: { id }, select: { galleryUrls: true } });
+    if (!listing) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const finalFilename = await optimizeUploadedImage(req.file, "gallery");
+    const url = storageProvider.publicUrl(finalFilename);
+    const galleryUrls = [...(listing.galleryUrls || []), url];
+
+    await prisma.establishment.update({ where: { id }, data: { galleryUrls } });
+    return res.json({ url, galleryUrls });
+  }),
+);
+
+adminRouter.delete(
+  "/quick-listings/:id/gallery",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { url } = req.body ?? {};
+    if (!url) return res.status(400).json({ error: "VALIDATION", message: "url required" });
+
+    const listing = await prisma.establishment.findUnique({ where: { id }, select: { galleryUrls: true } });
+    if (!listing) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const galleryUrls = (listing.galleryUrls || []).filter((u) => u !== url);
+    await prisma.establishment.update({ where: { id }, data: { galleryUrls } });
+    return res.json({ ok: true, galleryUrls });
+  }),
+);
+
+/* Upload listing photo from external URL — downloads and re-hosts locally */
+adminRouter.post(
+  "/quick-listings/:id/upload-url",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+    if (!imageUrl || typeof imageUrl !== "string") {
+      return res.status(400).json({ error: "Se requiere imageUrl" });
+    }
+
+    let parsed: URL;
+    try {
+      parsed = new URL(imageUrl);
+    } catch {
+      return res.status(400).json({ error: "URL invalida" });
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return res.status(400).json({ error: "Solo URLs http/https" });
+    }
+
+    const listing = await prisma.establishment.findUnique({ where: { id }, select: { galleryUrls: true } });
+    if (!listing) return res.status(404).json({ error: "NOT_FOUND" });
+
+    let buffer: Buffer;
+    let contentType: string;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(imageUrl, {
+        signal: controller.signal,
+        headers: { "User-Agent": "UZEED-Admin/1.0" },
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(400).json({ error: `No se pudo descargar la imagen (HTTP ${response.status})` });
+      }
+
+      contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "La URL no apunta a una imagen" });
+      }
+
+      const arrayBuf = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuf);
+
+      if (buffer.length > 20 * 1024 * 1024) {
+        return res.status(400).json({ error: "Imagen demasiado grande (max 20MB)" });
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        return res.status(400).json({ error: "Timeout al descargar la imagen" });
+      }
+      return res.status(400).json({ error: "No se pudo descargar la imagen" });
+    }
+
+    const extMap: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+      "image/avif": ".avif",
+    };
+    const ext = extMap[contentType] || ".jpg";
+    const filename = `${Date.now()}-url-import${ext}`;
+
+    const fs = await import("fs/promises");
+    await storageProvider.ensureBaseDir();
+    const filePath = path.join(config.storageDir, filename);
+    await fs.writeFile(filePath, buffer);
+
+    const { filename: finalFilename } = await optimizeImage(filePath, "gallery");
+    const url = storageProvider.publicUrl(finalFilename);
+    const galleryUrls = [...(listing.galleryUrls || []), url];
+
+    await prisma.establishment.update({ where: { id }, data: { galleryUrls } });
+
+    return res.json({ url, galleryUrls });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   QUICK PROFESSIONALS
+   Admin can create professional profiles (escorts, masajistas, etc.)
+   without the user registering. They appear on the map and directory
+   just like regular professionals.
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/quick-professionals",
+  asyncHandler(async (req, res) => {
+    const { q, limit, offset } = req.query as Record<string, string | undefined>;
+    const take = Math.min(parseInt(limit || "50", 10) || 50, 200);
+    const skip = parseInt(offset || "0", 10) || 0;
+
+    const where: any = { adminManaged: true, profileType: "PROFESSIONAL" };
+    if (q) {
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { city: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const [professionals, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        select: {
+          id: true, username: true, displayName: true, avatarUrl: true,
+          city: true, phone: true, bio: true, birthdate: true, gender: true,
+          latitude: true, longitude: true, primaryCategory: true,
+          serviceCategory: true, profileTags: true, serviceTags: true,
+          isActive: true, isVerified: true, tier: true,
+          profileMedia: { select: { id: true, url: true, type: true }, orderBy: { createdAt: "asc" } },
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+        take,
+        skip,
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    return res.json({ professionals, total });
+  }),
+);
+
+adminRouter.post(
+  "/quick-professionals",
+  asyncHandler(async (req, res) => {
+    const {
+      displayName, phone, city, address, bio, gender, birthdate,
+      latitude, longitude, primaryCategory, serviceCategory,
+      profileTags, serviceTags, tier,
+    } = req.body ?? {};
+
+    if (!displayName || !city) {
+      return res.status(400).json({ error: "VALIDATION", message: "displayName and city are required" });
+    }
+
+    // Generate a unique username and placeholder email for the admin-managed user
+    const slug = String(displayName)
+      .toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 20);
+    const suffix = Date.now().toString(36);
+    const username = `${slug}-${suffix}`;
+    const email = `admin-managed-${username}@placeholder.uzeed.cl`;
+
+    const professional = await prisma.user.create({
+      data: {
+        email,
+        username,
+        passwordHash: "ADMIN_MANAGED_NO_LOGIN",
+        displayName: String(displayName),
+        phone: phone ? String(phone) : null,
+        city: String(city),
+        address: address ? String(address) : null,
+        bio: bio ? String(bio) : null,
+        gender: gender || null,
+        birthdate: birthdate ? new Date(birthdate) : null,
+        latitude: latitude != null ? Number(latitude) : null,
+        longitude: longitude != null ? Number(longitude) : null,
+        primaryCategory: primaryCategory ? String(primaryCategory) : "Escort",
+        serviceCategory: serviceCategory ? String(serviceCategory) : "Escort",
+        profileType: "PROFESSIONAL",
+        isActive: true,
+        isVerified: true,
+        adminManaged: true,
+        tier: tier || null,
+        profileTags: Array.isArray(profileTags) ? profileTags.map(String) : [],
+        serviceTags: Array.isArray(serviceTags) ? serviceTags.map(String) : [],
+      },
+      include: {
+        profileMedia: { select: { id: true, url: true, type: true } },
+      },
+    });
+
+    return res.json({ professional });
+  }),
+);
+
+adminRouter.put(
+  "/quick-professionals/:id",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const {
+      displayName, phone, city, address, bio, gender, birthdate,
+      latitude, longitude, primaryCategory, serviceCategory,
+      profileTags, serviceTags, tier,
+    } = req.body ?? {};
+
+    const data: any = {};
+    if (displayName !== undefined) data.displayName = String(displayName);
+    if (phone !== undefined) data.phone = phone ? String(phone) : null;
+    if (city !== undefined) data.city = String(city);
+    if (address !== undefined) data.address = address ? String(address) : null;
+    if (bio !== undefined) data.bio = bio ? String(bio) : null;
+    if (gender !== undefined) data.gender = gender || null;
+    if (birthdate !== undefined) data.birthdate = birthdate ? new Date(birthdate) : null;
+    if (latitude !== undefined) data.latitude = latitude != null ? Number(latitude) : null;
+    if (longitude !== undefined) data.longitude = longitude != null ? Number(longitude) : null;
+    if (primaryCategory !== undefined) data.primaryCategory = primaryCategory ? String(primaryCategory) : null;
+    if (serviceCategory !== undefined) data.serviceCategory = serviceCategory ? String(serviceCategory) : null;
+    if (profileTags !== undefined) data.profileTags = Array.isArray(profileTags) ? profileTags.map(String) : [];
+    if (serviceTags !== undefined) data.serviceTags = Array.isArray(serviceTags) ? serviceTags.map(String) : [];
+    if (tier !== undefined) data.tier = tier || null;
+
+    const professional = await prisma.user.update({
+      where: { id },
+      data,
+      include: {
+        profileMedia: { select: { id: true, url: true, type: true } },
+      },
+    });
+    return res.json({ professional });
+  }),
+);
+
+adminRouter.delete(
+  "/quick-professionals/:id",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({ where: { id }, select: { adminManaged: true } });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+    if (!user.adminManaged) return res.status(403).json({ error: "FORBIDDEN", message: "Only admin-managed profiles can be deleted here" });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.profileMedia.deleteMany({ where: { ownerId: id } });
+      await tx.serviceItem.deleteMany({ where: { ownerId: id } });
+      await tx.favorite.deleteMany({ where: { OR: [{ userId: id }, { professionalId: id }] } });
+      await tx.notification.deleteMany({ where: { userId: id } });
+      await tx.user.delete({ where: { id } });
+    });
+
+    return res.json({ ok: true });
+  }),
+);
+
+adminRouter.post(
+  "/quick-professionals/:id/upload",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, avatarUrl: true } });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const url = storageProvider.publicUrl(req.file.filename);
+
+    // Create a ProfileMedia entry
+    const media = await prisma.profileMedia.create({
+      data: { ownerId: id, type: "IMAGE", url },
+    });
+
+    // Set as avatar if the user doesn't have one yet
+    if (!user.avatarUrl) {
+      await prisma.user.update({ where: { id }, data: { avatarUrl: url } });
+    }
+
+    return res.json({ media, url });
+  }),
+);
+
+/* Upload photo from external URL — downloads and re-hosts locally */
+adminRouter.post(
+  "/quick-professionals/:id/upload-url",
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { imageUrl } = req.body;
+
+    if (!imageUrl || typeof imageUrl !== "string") {
+      return res.status(400).json({ error: "Se requiere imageUrl" });
+    }
+
+    // Validate it looks like a URL
+    let parsed: URL;
+    try {
+      parsed = new URL(imageUrl);
+    } catch {
+      return res.status(400).json({ error: "URL invalida" });
+    }
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return res.status(400).json({ error: "Solo URLs http/https" });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, avatarUrl: true } });
+    if (!user) return res.status(404).json({ error: "NOT_FOUND" });
+
+    // Download the image
+    let buffer: Buffer;
+    let contentType: string;
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const response = await fetch(imageUrl, {
+        signal: controller.signal,
+        headers: { "User-Agent": "UZEED-Admin/1.0" },
+      });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        return res.status(400).json({ error: `No se pudo descargar la imagen (HTTP ${response.status})` });
+      }
+
+      contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.startsWith("image/")) {
+        return res.status(400).json({ error: "La URL no apunta a una imagen" });
+      }
+
+      const arrayBuf = await response.arrayBuffer();
+      buffer = Buffer.from(arrayBuf);
+
+      // Limit to 20MB
+      if (buffer.length > 20 * 1024 * 1024) {
+        return res.status(400).json({ error: "Imagen demasiado grande (max 20MB)" });
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        return res.status(400).json({ error: "Timeout al descargar la imagen" });
+      }
+      return res.status(400).json({ error: "No se pudo descargar la imagen" });
+    }
+
+    // Determine extension from content-type
+    const extMap: Record<string, string> = {
+      "image/jpeg": ".jpg",
+      "image/jpg": ".jpg",
+      "image/png": ".png",
+      "image/webp": ".webp",
+      "image/gif": ".gif",
+      "image/avif": ".avif",
+    };
+    const ext = extMap[contentType] || ".jpg";
+    const filename = `${Date.now()}-url-import${ext}`;
+
+    // Save to disk
+    const fs = await import("fs/promises");
+    await storageProvider.ensureBaseDir();
+    await fs.writeFile(path.join(config.storageDir, filename), buffer);
+
+    const url = storageProvider.publicUrl(filename);
+
+    const media = await prisma.profileMedia.create({
+      data: { ownerId: id, type: "IMAGE", url },
+    });
+
+    if (!user.avatarUrl) {
+      await prisma.user.update({ where: { id }, data: { avatarUrl: url } });
+    }
+
+    return res.json({ media, url });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   WEEKLY HIGHLIGHTS EMAIL
+   ══════════════════════════════════════════════════════════════ */
+
+adminRouter.get(
+  "/weekly-highlights/search-profiles",
+  asyncHandler(async (req, res) => {
+    const q = (req.query.q as string) || "";
+    const profileType = req.query.profileType as string | undefined;
+
+    const where: any = {
+      isActive: true,
+      profileType: { in: ["PROFESSIONAL", "CREATOR", "ESTABLISHMENT"] },
+    };
+    if (profileType) where.profileType = profileType;
+    if (q) {
+      where.OR = [
+        { displayName: { contains: q, mode: "insensitive" } },
+        { username: { contains: q, mode: "insensitive" } },
+        { city: { contains: q, mode: "insensitive" } },
+      ];
+    }
+
+    const profiles = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        city: true,
+        primaryCategory: true,
+        profileType: true,
+        tier: true,
+        isVerified: true,
+      },
+      orderBy: { profileViews: "desc" },
+      take: 20,
+    });
+
+    return res.json({ profiles });
+  }),
+);
+
+adminRouter.post(
+  "/weekly-highlights/preview",
+  asyncHandler(async (req, res) => {
+    const { profileIds, subject } = req.body ?? {};
+    if (!Array.isArray(profileIds) || profileIds.length === 0 || profileIds.length > 4) {
+      return res.status(400).json({ error: "Se requieren entre 1 y 4 perfiles" });
+    }
+
+    const profiles = await prisma.user.findMany({
+      where: { id: { in: profileIds } },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        city: true,
+        primaryCategory: true,
+      },
+    });
+
+    const ordered = profileIds
+      .map((id: string) => profiles.find((p) => p.id === id))
+      .filter(Boolean);
+
+    const { generateWeeklyHighlightsHtml } = await import("../lib/notificationEmail");
+    const html = generateWeeklyHighlightsHtml(ordered as any, subject || undefined);
+
+    return res.json({ html, profileCount: ordered.length });
+  }),
+);
+
+adminRouter.post(
+  "/weekly-highlights/send",
+  asyncHandler(async (req, res) => {
+    const { profileIds, subject, audience } = req.body ?? {};
+    if (!Array.isArray(profileIds) || profileIds.length === 0 || profileIds.length > 4) {
+      return res.status(400).json({ error: "Se requieren entre 1 y 4 perfiles" });
+    }
+    if (!["clients", "professionals", "both"].includes(audience)) {
+      return res.status(400).json({ error: "audience debe ser 'clients', 'professionals' o 'both'" });
+    }
+
+    const profiles = await prisma.user.findMany({
+      where: { id: { in: profileIds } },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        avatarUrl: true,
+        city: true,
+        primaryCategory: true,
+      },
+    });
+
+    const ordered = profileIds
+      .map((id: string) => profiles.find((p) => p.id === id))
+      .filter(Boolean);
+
+    const { generateWeeklyHighlightsHtml, sendWeeklyHighlightsEmail } = await import("../lib/notificationEmail");
+    const emailSubject = subject || "Destacadas de la semana — UZEED";
+    const html = generateWeeklyHighlightsHtml(ordered as any, subject || undefined);
+
+    const recipientWhere: any = {
+      isActive: true,
+      email: { not: { contains: "@placeholder.uzeed.cl" } },
+    };
+
+    if (audience === "clients") {
+      recipientWhere.profileType = "CLIENT";
+    } else if (audience === "professionals") {
+      recipientWhere.profileType = { in: ["PROFESSIONAL", "CREATOR", "ESTABLISHMENT", "SHOP"] };
+    }
+
+    const recipients = await prisma.user.findMany({
+      where: recipientWhere,
+      select: { email: true },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    for (const r of recipients) {
+      try {
+        await sendWeeklyHighlightsEmail(r.email, html, emailSubject);
+        sent++;
+      } catch {
+        failed++;
+      }
+    }
+
+    return res.json({ sent, failed, total: recipients.length });
+  }),
+);
+
+adminRouter.delete(
+  "/quick-professionals/:id/media/:mediaId",
+  requireFresh2FA,
+  asyncHandler(async (req, res) => {
+    const { id, mediaId } = req.params;
+
+    const media = await prisma.profileMedia.findFirst({
+      where: { id: mediaId, ownerId: id },
+    });
+    if (!media) return res.status(404).json({ error: "NOT_FOUND" });
+
+    await prisma.profileMedia.delete({ where: { id: mediaId } });
+
+    // If deleted media was the avatar, set the next available one
+    const user = await prisma.user.findUnique({ where: { id }, select: { avatarUrl: true } });
+    if (user?.avatarUrl === media.url) {
+      const next = await prisma.profileMedia.findFirst({
+        where: { ownerId: id, type: "IMAGE" },
+        orderBy: { createdAt: "asc" },
+      });
+      await prisma.user.update({
+        where: { id },
+        data: { avatarUrl: next?.url || null },
+      });
+    }
+
+    return res.json({ ok: true });
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   EMAIL CAMPAIGNS (Mass mail with images, test, target audience)
+   ══════════════════════════════════════════════════════════════ */
+
+const PROFESSIONAL_TYPES = ["PROFESSIONAL", "CREATOR", "ESTABLISHMENT", "SHOP"] as const;
+const CLIENT_TYPES = ["CLIENT", "VIEWER"] as const;
+
+function audienceWhere(audience: string): any | null {
+  if (audience === "professionals")
+    return { profileType: { in: [...PROFESSIONAL_TYPES] } };
+  if (audience === "clients")
+    return { profileType: { in: [...CLIENT_TYPES] } };
+  if (audience === "all")
+    return { profileType: { in: [...PROFESSIONAL_TYPES, ...CLIENT_TYPES] } };
+  return null;
+}
+
+/**
+ * Upload an image to the public uploads folder, returning an absolute URL
+ * the admin can drop into the campaign HTML. Email clients fetch images
+ * from the absolute URL — the `/uploads` static handler is CORS/CORP-open
+ * and has no auth, so receivers can render them from their inbox.
+ */
+adminRouter.post(
+  "/email-campaign/upload-image",
+  upload.single("file"),
+  asyncHandler(async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "NO_FILE" });
+    const mime = (req.file.mimetype || "").toLowerCase();
+    if (!mime.startsWith("image/")) {
+      return res.status(400).json({ error: "INVALID_FILE_TYPE" });
+    }
+
+    // Keep the original format (JPEG/PNG/GIF) for maximum compatibility with
+    // older email clients that don't render WebP. Only optimize if input is
+    // already WebP-friendly or huge.
+    let finalName = req.file.filename;
+    const mimeLower = mime;
+    const shouldOptimize =
+      mimeLower === "image/webp" ||
+      (req.file.size && req.file.size > 2 * 1024 * 1024);
+    if (shouldOptimize) {
+      try {
+        const optimizedName = await optimizeUploadedImage(req.file, "gallery");
+        if (optimizedName) finalName = optimizedName;
+      } catch (err) {
+        console.warn("[email-campaign] optimize failed, using original", err);
+      }
+    }
+
+    const relativeUrl = storageProvider.publicUrl(finalName);
+    const absoluteUrl = /^https?:\/\//i.test(relativeUrl)
+      ? relativeUrl
+      : `${config.apiUrl.replace(/\/$/, "")}${relativeUrl}`;
+
+    return res.json({ url: absoluteUrl });
+  }),
+);
+
+adminRouter.get(
+  "/email-campaign/audience-counts",
+  asyncHandler(async (_req, res) => {
+    const [professionals, clients] = await Promise.all([
+      prisma.user.count({
+        where: {
+          isActive: true,
+          profileType: { in: [...PROFESSIONAL_TYPES] },
+          NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+        } as any,
+      }),
+      prisma.user.count({
+        where: {
+          isActive: true,
+          profileType: { in: [...CLIENT_TYPES] },
+          NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+        } as any,
+      }),
+    ]);
+    return res.json({ professionals, clients, all: professionals + clients });
+  }),
+);
+
+adminRouter.post(
+  "/email-campaign/preview",
+  asyncHandler(async (req, res) => {
+    const {
+      title,
+      bodyHtml,
+      ctaLabel,
+      ctaUrl,
+      headerImageUrl,
+    } = (req.body ?? {}) as Record<string, string | undefined>;
+
+    if (!title || !bodyHtml) {
+      return res.status(400).json({ error: "title y bodyHtml requeridos" });
+    }
+    if (title.length > 200) {
+      return res.status(400).json({ error: "title demasiado largo" });
+    }
+    if (bodyHtml.length > 100_000) {
+      return res.status(400).json({ error: "bodyHtml demasiado largo" });
+    }
+
+    const { generateCampaignEmailHtml } = await import("../lib/notificationEmail");
+    const html = generateCampaignEmailHtml({
+      title,
+      bodyHtml,
+      ctaLabel: ctaLabel || null,
+      ctaUrl: ctaUrl || null,
+      headerImageUrl: headerImageUrl || null,
+    });
+    return res.json({ html });
+  }),
+);
+
+adminRouter.post(
+  "/email-campaign/send",
+  asyncHandler(async (req, res) => {
+    const {
+      title,
+      subject,
+      bodyHtml,
+      ctaLabel,
+      ctaUrl,
+      headerImageUrl,
+      audience,
+      testEmail,
+    } = (req.body ?? {}) as Record<string, string | undefined>;
+
+    if (!title || !bodyHtml || !subject) {
+      return res.status(400).json({ error: "subject, title y bodyHtml requeridos" });
+    }
+    if (subject.length > 200 || title.length > 200) {
+      return res.status(400).json({ error: "Asunto o titulo demasiado largo" });
+    }
+    if (bodyHtml.length > 100_000) {
+      return res.status(400).json({ error: "Contenido demasiado largo" });
+    }
+
+    const { generateCampaignEmailHtml, sendCampaignEmail } = await import(
+      "../lib/notificationEmail"
+    );
+    const html = generateCampaignEmailHtml({
+      title,
+      bodyHtml,
+      ctaLabel: ctaLabel || null,
+      ctaUrl: ctaUrl || null,
+      headerImageUrl: headerImageUrl || null,
+    });
+
+    // Test mode: deliver a single copy to the provided address and stop.
+    if (testEmail) {
+      const trimmed = testEmail.trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+        return res.status(400).json({ error: "testEmail invalido" });
+      }
+      try {
+        await sendCampaignEmail(trimmed, subject, html);
+        return res.json({ ok: true, mode: "test", sentTo: trimmed });
+      } catch (err) {
+        console.error("[email-campaign] test send failed", err);
+        return res.status(500).json({ error: "Error enviando prueba" });
+      }
+    }
+
+    const where = audienceWhere(String(audience || ""));
+    if (!where) {
+      return res
+        .status(400)
+        .json({ error: "audience debe ser 'professionals', 'clients' o 'all'" });
+    }
+
+    const recipients = await prisma.user.findMany({
+      where: {
+        ...where,
+        isActive: true,
+        NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+      },
+      select: { email: true },
+    });
+
+    let sent = 0;
+    let failed = 0;
+    for (const r of recipients) {
+      if (!r.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(r.email)) {
+        failed++;
+        continue;
+      }
+      try {
+        await sendCampaignEmail(r.email, subject, html);
+        sent++;
+      } catch (err) {
+        console.error("[email-campaign] send failed", r.email, err);
+        failed++;
+      }
+    }
+
+    return res.json({
+      ok: true,
+      mode: "campaign",
+      audience,
+      total: recipients.length,
+      sent,
+      failed,
+    });
+  }),
+);
+
+/* ─── Admin: Stories curated for home rotation ──────────────────
+   List active stories with their showInHome flag, and let admins
+   toggle which ones rotate on the home grid.
+   ─────────────────────────────────────────────────────────────── */
+adminRouter.get(
+  "/home-stories",
+  asyncHandler(async (req, res) => {
+    const now = new Date();
+    const filter = String(req.query.filter || "all"); // "all" | "approved" | "pending"
+    const range = String(req.query.range || "all"); // "all" | "active" | "expired"
+    const visibility = String(req.query.visibility || "all"); // "all" | "visible" | "hidden"
+
+    const where: any = {};
+    if (filter === "approved") where.showInHome = true;
+    else if (filter === "pending") where.showInHome = false;
+    if (range === "active") where.expiresAt = { gt: now };
+    else if (range === "expired") where.expiresAt = { lte: now };
+    if (visibility === "visible") where.isHidden = false;
+    else if (visibility === "hidden") where.isHidden = true;
+
+    let stories: any[] = [];
+    try {
+      stories = await prisma.story.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take: 500,
+        select: {
+          id: true,
+          mediaUrl: true,
+          mediaType: true,
+          showInHome: true,
+          isHidden: true,
+          createdAt: true,
+          renewedAt: true,
+          expiresAt: true,
+          likeCount: true,
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+              tier: true,
+              profileType: true,
+            },
+          },
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError ||
+        err instanceof Prisma.PrismaClientValidationError
+      ) {
+        return res.json({ stories: [] });
+      }
+      throw err;
+    }
+
+    return res.json({
+      stories: stories.map((s) => ({
+        id: s.id,
+        mediaUrl: s.mediaUrl,
+        mediaType: s.mediaType,
+        showInHome: s.showInHome,
+        isHidden: Boolean(s.isHidden),
+        createdAt: s.createdAt.toISOString(),
+        renewedAt: s.renewedAt ? s.renewedAt.toISOString() : null,
+        expiresAt: s.expiresAt.toISOString(),
+        expired: s.expiresAt.getTime() <= now.getTime(),
+        likeCount: s.likeCount ?? 0,
+        user: {
+          id: s.user.id,
+          username: s.user.username,
+          displayName: s.user.displayName || s.user.username,
+          avatarUrl: s.user.avatarUrl,
+          tier: s.user.tier,
+          profileType: s.user.profileType,
+        },
+      })),
+    });
+  }),
+);
+
+adminRouter.patch(
+  "/home-stories/:id",
+  asyncHandler(async (req, res) => {
+    const data: any = {};
+    if (req.body?.showInHome !== undefined) data.showInHome = Boolean(req.body.showInHome);
+    // Ocultar no borra: la historia desaparece del feed y del home y se puede
+    // volver a mostrar cuando el admin quiera.
+    if (req.body?.isHidden !== undefined) data.isHidden = Boolean(req.body.isHidden);
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: "VALIDATION", message: "Nada que actualizar" });
+    }
+    try {
+      const updated = await prisma.story.update({
+        where: { id: req.params.id },
+        data,
+        select: { id: true, showInHome: true, isHidden: true },
+      });
+      return res.json(updated);
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === "P2025"
+      ) {
+        return res.status(404).json({ error: "NOT_FOUND" });
+      }
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError ||
+        err instanceof Prisma.PrismaClientValidationError
+      ) {
+        return res.status(503).json({ error: "SHOW_IN_HOME_NOT_READY" });
+      }
+      throw err;
+    }
+  }),
+);
+
+/* ─── Admin: renovar historias antiguas ─────────────────────────
+   Vuelve a poner en circulación historias ya expiradas (o a punto de
+   expirar): extiende la expiración y marca la fecha de renovación, con
+   la que la historia se ordena y se muestra como si fuera nueva. La fecha
+   real de publicación se conserva.
+   ─────────────────────────────────────────────────────────────── */
+const STORY_RENEW_DAYS = 20;
+
+async function renewStories(ids: string[]) {
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + STORY_RENEW_DAYS * 24 * 60 * 60 * 1000);
+  const result = await prisma.story.updateMany({
+    where: { id: { in: ids } },
+    // Al renovar también se vuelve visible: renovar una historia oculta sin
+    // mostrarla no tendría ningún efecto.
+    data: { expiresAt, renewedAt: now, isHidden: false },
+  });
+  return { renewed: result.count, expiresAt: expiresAt.toISOString(), renewedAt: now.toISOString() };
+}
+
+adminRouter.post(
+  "/home-stories/renew",
+  asyncHandler(async (req, res) => {
+    const raw: unknown = req.body?.ids;
+    const ids = Array.isArray(raw)
+      ? raw.filter((v): v is string => typeof v === "string" && v.length > 0).slice(0, 200)
+      : [];
+    if (ids.length === 0) {
+      return res.status(400).json({ error: "VALIDATION", message: "ids requerido" });
+    }
+    try {
+      return res.json(await renewStories(ids));
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError ||
+        err instanceof Prisma.PrismaClientValidationError
+      ) {
+        return res.status(503).json({ error: "STORY_RENEW_NOT_READY" });
+      }
+      throw err;
+    }
+  }),
+);
+
+adminRouter.post(
+  "/home-stories/:id/renew",
+  asyncHandler(async (req, res) => {
+    try {
+      const result = await renewStories([req.params.id]);
+      if (result.renewed === 0) return res.status(404).json({ error: "NOT_FOUND" });
+      return res.json(result);
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError ||
+        err instanceof Prisma.PrismaClientValidationError
+      ) {
+        return res.status(503).json({ error: "STORY_RENEW_NOT_READY" });
+      }
+      throw err;
+    }
+  }),
+);
+
+/* ══════════════════════════════════════════════════════════════
+   CHAT MODERATION
+   Permite a los administradores revisar las conversaciones entre
+   clientes y profesionales para detectar mal uso de la mensajería
+   (estafas, acoso, intentos de desintermediación, etc.).
+   Solo lectura: no expone acciones de escritura sobre mensajes.
+   ══════════════════════════════════════════════════════════════ */
+
+const CHAT_USER_SELECT = {
+  id: true,
+  username: true,
+  displayName: true,
+  email: true,
+  avatarUrl: true,
+  profileType: true,
+  city: true,
+} as const;
+
+adminRouter.get(
+  "/chats",
+  asyncHandler(async (req, res) => {
+    const { q, limit, offset } = req.query as Record<string, string | undefined>;
+    const take = Math.min(parseInt(limit || "30", 10) || 30, 100);
+    const skip = parseInt(offset || "0", 10) || 0;
+
+    // Con búsqueda: resolver primero los usuarios que coinciden y filtrar
+    // las conversaciones donde participa alguno de ellos.
+    let filterIds: string[] | null = null;
+    if (q && q.trim()) {
+      const matched = await prisma.user.findMany({
+        where: {
+          OR: [
+            { displayName: { contains: q, mode: "insensitive" } },
+            { username: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+          ],
+        },
+        select: { id: true },
+        take: 200,
+      });
+      filterIds = matched.map((u) => u.id);
+      if (filterIds.length === 0) {
+        return res.json({ conversations: [], total: 0 });
+      }
+    }
+
+    const filterSql = filterIds
+      ? Prisma.sql`WHERE "fromId" = ANY(${filterIds}::uuid[]) OR "toId" = ANY(${filterIds}::uuid[])`
+      : Prisma.empty;
+
+    // Mensajes agrupados por par de usuarios (sin importar dirección).
+    const pairs: Array<{
+      userAId: string;
+      userBId: string;
+      messageCount: number;
+      lastMessageAt: Date;
+    }> = await prisma.$queryRaw`
+      SELECT LEAST("fromId", "toId")::text     AS "userAId",
+             GREATEST("fromId", "toId")::text  AS "userBId",
+             COUNT(*)::int                     AS "messageCount",
+             MAX("createdAt")                  AS "lastMessageAt"
+      FROM "Message"
+      ${filterSql}
+      GROUP BY 1, 2
+      ORDER BY "lastMessageAt" DESC
+      LIMIT ${take} OFFSET ${skip}`;
+
+    const totalRows: Array<{ count: number }> = await prisma.$queryRaw`
+      SELECT COUNT(*)::int AS count FROM (
+        SELECT 1 FROM "Message"
+        ${filterSql}
+        GROUP BY LEAST("fromId", "toId"), GREATEST("fromId", "toId")
+      ) pairs`;
+    const total = totalRows[0]?.count ?? 0;
+
+    const userIds = Array.from(
+      new Set(pairs.flatMap((p) => [p.userAId, p.userBId])),
+    );
+    const [users, lastMessages] = await Promise.all([
+      userIds.length
+        ? prisma.user.findMany({
+            where: { id: { in: userIds } },
+            select: CHAT_USER_SELECT,
+          })
+        : Promise.resolve([]),
+      Promise.all(
+        pairs.map((p) =>
+          prisma.message.findFirst({
+            where: {
+              OR: [
+                { fromId: p.userAId, toId: p.userBId },
+                { fromId: p.userBId, toId: p.userAId },
+              ],
+            },
+            orderBy: { createdAt: "desc" },
+            select: { body: true, fromId: true, createdAt: true },
+          }),
+        ),
+      ),
+    ]);
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    return res.json({
+      conversations: pairs.map((p, i) => ({
+        userA: userMap.get(p.userAId) ?? { id: p.userAId },
+        userB: userMap.get(p.userBId) ?? { id: p.userBId },
+        messageCount: p.messageCount,
+        lastMessageAt: p.lastMessageAt,
+        lastMessage: lastMessages[i],
+      })),
+      total,
+    });
+  }),
+);
+
+adminRouter.get(
+  "/chats/:userAId/:userBId",
+  asyncHandler(async (req, res) => {
+    const { userAId, userBId } = req.params;
+    if (!isUUID(userAId) || !isUUID(userBId)) {
+      return res.status(400).json({ error: "INVALID_USER_ID" });
+    }
+    const take = Math.min(
+      parseInt(String(req.query.limit || "200"), 10) || 200,
+      500,
+    );
+    const skip = parseInt(String(req.query.offset || "0"), 10) || 0;
+
+    const [userA, userB] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userAId }, select: CHAT_USER_SELECT }),
+      prisma.user.findUnique({ where: { id: userBId }, select: CHAT_USER_SELECT }),
+    ]);
+    if (!userA || !userB) return res.status(404).json({ error: "NOT_FOUND" });
+
+    const where = {
+      OR: [
+        { fromId: userAId, toId: userBId },
+        { fromId: userBId, toId: userAId },
+      ],
+    };
+    const [messagesDesc, total] = await Promise.all([
+      prisma.message.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        take,
+        skip,
+        select: {
+          id: true,
+          fromId: true,
+          toId: true,
+          body: true,
+          createdAt: true,
+          readAt: true,
+        },
+      }),
+      prisma.message.count({ where }),
+    ]);
+
+    return res.json({
+      userA,
+      userB,
+      messages: messagesDesc.reverse(),
+      total,
+    });
+  }),
+);

@@ -1,0 +1,253 @@
+import { Router } from "express";
+import { prisma } from "../lib/prisma";
+import { requireAdmin } from "../lib/auth";
+import { sendDepositApprovedEmail, sendWithdrawalApprovedEmail } from "../lib/transactionEmail";
+
+export const adminTokensRouter = Router();
+
+/* ── Allowed platform config keys (whitelist) ── */
+const ALLOWED_CONFIG_KEYS = [
+  "token_rate_clp",
+  "platform_commission_percent",
+  "noshow_penalty_tokens",
+  "min_withdrawal_tokens",
+  "max_withdrawal_tokens",
+];
+
+// ── GET /admin/deposits — list transfer deposits only (Flow is automatic) ──
+adminTokensRouter.get("/admin/deposits", requireAdmin, async (req, res) => {
+  const status = String(req.query.status || "PENDING");
+  const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10) || 50, 1), 100);
+  const offset = Math.max(parseInt(String(req.query.offset || "0"), 10) || 0, 0);
+
+  const where: any = { method: "TRANSFER" };
+  if (status !== "ALL") where.status = status;
+
+  const [deposits, total] = await Promise.all([
+    prisma.tokenDeposit.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+      include: {
+        wallet: {
+          include: {
+            user: { select: { id: true, email: true, displayName: true, username: true, profileType: true } },
+          },
+        },
+      },
+    }),
+    prisma.tokenDeposit.count({ where }),
+  ]);
+  res.json({ deposits, total });
+});
+
+// ── PUT /admin/deposits/:id/approve — approve a deposit ──
+adminTokensRouter.put("/admin/deposits/:id/approve", requireAdmin, async (req, res) => {
+  const deposit = await prisma.tokenDeposit.findUnique({
+    where: { id: req.params.id },
+    include: { wallet: true },
+  });
+  if (!deposit) return res.status(404).json({ error: "Not found" });
+  if (deposit.method === "FLOW") return res.status(400).json({ error: "Flow deposits are automatic" });
+  if (deposit.status !== "PENDING") return res.status(400).json({ error: "Already processed" });
+
+  // Use interactive transaction for correct balance tracking
+  await prisma.$transaction(async (tx) => {
+    await tx.tokenDeposit.update({
+      where: { id: deposit.id },
+      data: { status: "APPROVED", reviewedBy: req.session.userId!, reviewedAt: new Date() },
+    });
+
+    const updatedWallet = await tx.wallet.update({
+      where: { id: deposit.walletId },
+      data: { balance: { increment: deposit.amount } },
+    });
+
+    await tx.tokenTransaction.create({
+      data: {
+        walletId: deposit.walletId,
+        type: "DEPOSIT",
+        amount: deposit.amount,
+        balance: updatedWallet.balance,
+        referenceId: deposit.id,
+        description: `Depósito aprobado: ${deposit.amount} tokens`,
+      },
+    });
+  });
+
+  // Send approval email (fire & forget)
+  const depositUser = await prisma.user.findFirst({
+    where: { wallet: { id: deposit.walletId } },
+    select: { email: true },
+  });
+  if (depositUser?.email) {
+    sendDepositApprovedEmail(depositUser.email, { tokens: deposit.amount, clpAmount: deposit.clpAmount }).catch((err) => console.error("[admin] deposit approved email failed", err));
+  }
+
+  console.log(`[admin] deposit ${deposit.id} approved by ${req.session.userId} — ${deposit.amount} tokens`);
+  res.json({ ok: true });
+});
+
+// ── PUT /admin/deposits/:id/reject — reject a deposit ──
+adminTokensRouter.put("/admin/deposits/:id/reject", requireAdmin, async (req, res) => {
+  const deposit = await prisma.tokenDeposit.findUnique({ where: { id: req.params.id } });
+  if (!deposit) return res.status(404).json({ error: "Not found" });
+  if (deposit.method === "FLOW") return res.status(400).json({ error: "Flow deposits are automatic" });
+  if (deposit.status !== "PENDING") return res.status(400).json({ error: "Already processed" });
+
+  const reason = req.body.reason;
+  if (reason !== undefined && reason !== null && (typeof reason !== "string" || reason.length > 500)) {
+    return res.status(400).json({ error: "Razón inválida (máximo 500 caracteres)" });
+  }
+
+  await prisma.tokenDeposit.update({
+    where: { id: deposit.id },
+    data: {
+      status: "REJECTED",
+      reviewedBy: req.session.userId!,
+      reviewedAt: new Date(),
+      rejectReason: reason || null,
+    },
+  });
+
+  console.log(`[admin] deposit ${deposit.id} rejected by ${req.session.userId}`);
+  res.json({ ok: true });
+});
+
+// ── GET /admin/withdrawals — list withdrawal requests ──
+adminTokensRouter.get("/admin/withdrawals", requireAdmin, async (req, res) => {
+  const status = String(req.query.status || "PENDING");
+  const limit = Math.min(Math.max(parseInt(String(req.query.limit || "50"), 10) || 50, 1), 100);
+  const offset = Math.max(parseInt(String(req.query.offset || "0"), 10) || 0, 0);
+
+  const where = status === "ALL" ? {} : { status: status as any };
+  const [withdrawals, total] = await Promise.all([
+    prisma.withdrawalRequest.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+      include: {
+        wallet: {
+          include: {
+            user: { select: { id: true, email: true, displayName: true, username: true, profileType: true } },
+          },
+        },
+      },
+    }),
+    prisma.withdrawalRequest.count({ where }),
+  ]);
+  res.json({ withdrawals, total });
+});
+
+// ── PUT /admin/withdrawals/:id/approve — approve withdrawal ──
+adminTokensRouter.put("/admin/withdrawals/:id/approve", requireAdmin, async (req, res) => {
+  const wr = await prisma.withdrawalRequest.findUnique({ where: { id: req.params.id } });
+  if (!wr) return res.status(404).json({ error: "Not found" });
+  if (wr.status !== "PENDING") return res.status(400).json({ error: "Already processed" });
+
+  await prisma.withdrawalRequest.update({
+    where: { id: wr.id },
+    data: { status: "APPROVED", reviewedBy: req.session.userId!, reviewedAt: new Date() },
+  });
+
+  // Send approval email (fire & forget)
+  const wrUser = await prisma.user.findFirst({
+    where: { wallet: { id: wr.walletId } },
+    select: { email: true },
+  });
+  if (wrUser?.email) {
+    sendWithdrawalApprovedEmail(wrUser.email, { tokens: wr.amount, clpAmount: wr.clpAmount, bankName: wr.bankName }).catch((err) => console.error("[admin] withdrawal approved email failed", err));
+  }
+
+  console.log(`[admin] withdrawal ${wr.id} approved by ${req.session.userId} — ${wr.amount} tokens`);
+  res.json({ ok: true });
+});
+
+// ── PUT /admin/withdrawals/:id/reject — reject withdrawal (refund tokens) ──
+adminTokensRouter.put("/admin/withdrawals/:id/reject", requireAdmin, async (req, res) => {
+  const wr = await prisma.withdrawalRequest.findUnique({
+    where: { id: req.params.id },
+    include: { wallet: true },
+  });
+  if (!wr) return res.status(404).json({ error: "Not found" });
+  if (wr.status !== "PENDING") return res.status(400).json({ error: "Already processed" });
+
+  const reason = req.body.reason;
+  if (reason !== undefined && reason !== null && (typeof reason !== "string" || reason.length > 500)) {
+    return res.status(400).json({ error: "Razón inválida (máximo 500 caracteres)" });
+  }
+
+  // Refund tokens back to wallet — use interactive transaction for correct balance
+  await prisma.$transaction(async (tx) => {
+    await tx.withdrawalRequest.update({
+      where: { id: wr.id },
+      data: {
+        status: "REJECTED",
+        reviewedBy: req.session.userId!,
+        reviewedAt: new Date(),
+        rejectReason: reason || null,
+      },
+    });
+
+    const updatedWallet = await tx.wallet.update({
+      where: { id: wr.walletId },
+      data: { balance: { increment: wr.amount } },
+    });
+
+    await tx.tokenTransaction.create({
+      data: {
+        walletId: wr.walletId,
+        type: "ADJUSTMENT",
+        amount: wr.amount,
+        balance: updatedWallet.balance,
+        referenceId: wr.id,
+        description: `Retiro rechazado — tokens devueltos: ${wr.amount}`,
+      },
+    });
+  });
+
+  console.log(`[admin] withdrawal ${wr.id} rejected by ${req.session.userId} — ${wr.amount} tokens refunded`);
+  res.json({ ok: true });
+});
+
+// ── GET/PUT /admin/platform-config — manage platform settings ──
+adminTokensRouter.get("/admin/platform-config", requireAdmin, async (_req, res) => {
+  const configs = await prisma.platformConfig.findMany();
+  const map: Record<string, string> = {};
+  for (const c of configs) map[c.key] = c.value;
+  res.json({ config: map });
+});
+
+adminTokensRouter.put("/admin/platform-config", requireAdmin, async (req, res) => {
+  const entries = req.body.entries as { key: string; value: string }[];
+  if (!Array.isArray(entries)) return res.status(400).json({ error: "entries array required" });
+
+  // Validate all entries before writing
+  for (const e of entries) {
+    if (!e.key || typeof e.key !== "string") {
+      return res.status(400).json({ error: "Clave inválida" });
+    }
+    if (!ALLOWED_CONFIG_KEYS.includes(e.key)) {
+      return res.status(400).json({ error: `Clave no permitida: ${e.key}` });
+    }
+    const numVal = parseInt(String(e.value), 10);
+    if (!Number.isFinite(numVal) || numVal < 0 || numVal > 1_000_000) {
+      return res.status(400).json({ error: `Valor inválido para ${e.key}: debe ser un número entre 0 y 1.000.000` });
+    }
+  }
+
+  await prisma.$transaction(
+    entries.map((e) =>
+      prisma.platformConfig.upsert({
+        where: { key: e.key },
+        update: { value: String(e.value) },
+        create: { key: e.key, value: String(e.value) },
+      }),
+    ),
+  );
+
+  console.log(`[admin] platform config updated by ${req.session.userId}:`, entries.map((e) => `${e.key}=${e.value}`).join(", "));
+  res.json({ ok: true });
+});

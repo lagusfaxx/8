@@ -1,0 +1,505 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+
+import useMe from "../../hooks/useMe";
+import useSubscriptionStatus from "../../hooks/useSubscriptionStatus";
+import { apiFetch } from "../../lib/api";
+import Avatar from "../../components/Avatar";
+import EmailNotificationsToggle from "../../components/EmailNotificationsToggle";
+import AutoReplySettings from "../../components/AutoReplySettings";
+import { Badge } from "../../components/ui/badge";
+import { useState, useEffect, useCallback } from "react";
+import {
+  User, MessageSquare, Heart,
+  CreditCard, LogOut, ExternalLink, Palette, ShoppingBag,
+  Building, Sparkles, ChevronRight, Camera, Eye, Edit3,
+  TrendingUp, Zap, Shield, ShieldCheck, Wallet, RefreshCw,
+  Gift, Copy, Check, VenetianMask, ArrowRight, Bell,
+} from "lucide-react";
+
+type QuickAction = {
+  label: string;
+  description: string;
+  href: string;
+  icon: typeof Edit3;
+  color: string;
+};
+
+export default function AccountPage() {
+  const router = useRouter();
+  const { me, loading } = useMe();
+  const { status: subscriptionStatus, loading: statusLoading } = useSubscriptionStatus();
+  const user = me?.user ?? null;
+
+  const handleLogout = async () => {
+    await apiFetch("/auth/logout", { method: "POST" });
+    window.location.href = "/login";
+  };
+
+  const [umateCreatorStatus, setUmateCreatorStatus] = useState<string | null>(null);
+  useEffect(() => {
+    if (!me?.user) return;
+    apiFetch<{ creator: { status?: string } | null }>("/umate/creator/me")
+      .then((d) => setUmateCreatorStatus(d?.creator?.status ?? null))
+      .catch(() => setUmateCreatorStatus(null));
+  }, [me]);
+  const umateHref = umateCreatorStatus === "ACTIVE" ? "/umate/explore" : "/umate/onboarding";
+  const umateDescription =
+    umateCreatorStatus === "ACTIVE" ? "Ir a UMate"
+    : umateCreatorStatus === "PENDING_REVIEW" ? "En revisión"
+    : umateCreatorStatus ? "Continúa tu registro"
+    : "Crea tu perfil UMate";
+
+  const handleSubscribe = () => {
+    router.push("/pago");
+  };
+
+  const profileType = (user?.profileType || "").toUpperCase();
+  const role = (user?.role || "").toUpperCase();
+  const isMotelProfile = profileType === "ESTABLISHMENT" || role === "MOTEL" || role === "MOTEL_OWNER";
+  const isProfessional = profileType === "PROFESSIONAL";
+  const isShop = profileType === "SHOP";
+  const canManageProfile = ["PROFESSIONAL", "SHOP", "ESTABLISHMENT"].includes(profileType);
+  const requiresPayment = ["PROFESSIONAL", "SHOP", "ESTABLISHMENT"].includes(profileType);
+  const canUpgradeToProfessional = profileType === "CLIENT";
+  const isAdmin = role === "ADMIN";
+
+  const isTrialPeriod = subscriptionStatus?.trialActive && !subscriptionStatus?.membershipActive;
+  const profileLabel =
+    isProfessional ? "Experiencia"
+    : profileType === "ESTABLISHMENT" ? "Lugar"
+    : isShop ? "Tienda"
+    : "Cliente";
+
+  const profileIcon =
+    isProfessional ? <Sparkles className="h-4 w-4" />
+    : profileType === "ESTABLISHMENT" ? <Building className="h-4 w-4" />
+    : isShop ? <ShoppingBag className="h-4 w-4" />
+    : <User className="h-4 w-4" />;
+
+  const publicProfileUrl = user
+    ? isProfessional ? `/profesional/${user.id}`
+    : profileType === "ESTABLISHMENT" ? `/establecimiento/${user.id}`
+    : isShop ? `/sexshop/${user.username}`
+    : "/"
+    : "/";
+
+  const quickActions: QuickAction[] = [];
+  if (isProfessional || isShop) {
+    quickActions.push(
+      { label: "Editar perfil", description: "Fotos, bio, servicios", href: "/dashboard/services", icon: Edit3, color: "text-fuchsia-400" },
+      { label: "Mis mensajes", description: "Chat con clientes", href: "/chats", icon: MessageSquare, color: "text-blue-400" },
+    );
+  }
+  if (isProfessional) {
+    quickActions.push(
+      { label: "Subir historia", description: "Foto o video de 20 días", href: "/dashboard/stories?nueva=1", icon: Camera, color: "text-pink-400" },
+      { label: "Ver mi perfil", description: "Como lo ven los clientes", href: publicProfileUrl, icon: Eye, color: "text-violet-400" },
+      { label: "Marketplace", description: "Vende tus artículos", href: "/marketplace/vender", icon: ShoppingBag, color: "text-emerald-400" },
+      { label: "Acreditar exámenes", description: "Sube documentos profesionales", href: "/cuenta/acreditacion", icon: ShieldCheck, color: "text-blue-400" },
+    );
+  }
+  if (!canManageProfile) {
+    quickActions.push(
+      { label: "Mi perfil", description: "Foto y nombre", href: "/cuenta/perfil", icon: Edit3, color: "text-violet-400" },
+      { label: "Explorar", description: "Descubre cerca tuyo", href: "/services", icon: Sparkles, color: "text-fuchsia-400" },
+      { label: "Mensajes", description: "Conversaciones", href: "/chats", icon: MessageSquare, color: "text-blue-400" },
+      { label: "Favoritos", description: "Perfiles guardados", href: "/favoritos", icon: Heart, color: "text-rose-400" },
+    );
+  }
+  quickActions.push(
+    { label: "Billetera", description: "Tokens y saldo", href: "/wallet", icon: Wallet, color: "text-amber-400" },
+    { label: "UMate", description: umateDescription, href: umateHref, icon: Sparkles, color: "text-violet-400" },
+  );
+
+  const showVisibility = isProfessional || profileType === "CREATOR";
+
+  return (
+    <div className="mx-auto w-full max-w-2xl lg:max-w-4xl pb-10">
+      {loading ? (
+        <div className="space-y-4">
+          <div className="h-48 rounded-2xl bg-white/5 animate-pulse" />
+          <div className="h-32 rounded-2xl bg-white/5 animate-pulse" />
+        </div>
+      ) : user ? (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          className="relative overflow-hidden rounded-3xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.4)]"
+        >
+          {/* Top accent line */}
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/50 to-transparent" />
+
+          {/* ── Profile Hero ── */}
+          <div className="relative">
+            <div className="h-28 bg-gradient-to-br from-violet-600/30 via-fuchsia-500/20 to-transparent">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(168,85,247,0.3),transparent_70%)]" />
+            </div>
+            <div className="relative px-6 pb-6">
+              <div className="flex flex-col items-center lg:flex-row lg:items-end lg:gap-5">
+                <div className="-mt-12 mb-3 flex justify-center lg:mb-0 lg:shrink-0">
+                  <div className="rounded-full p-[3px] bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-[0_0_24px_rgba(139,92,246,0.35)]">
+                    <Avatar
+                      src={user.avatarUrl}
+                      alt={user.displayName || user.username}
+                      size={80}
+                      className="border-[3px] border-[#0e0e12]"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col items-center text-center lg:items-start lg:text-left lg:flex-1 lg:min-w-0">
+                  <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                    <h1 className="text-lg font-semibold leading-tight">{user.displayName || user.username}</h1>
+                    <Badge className="flex items-center gap-1">
+                      {profileIcon}
+                      {profileLabel}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 text-xs text-white/40">@{user.username}</p>
+                </div>
+                <div className="mt-4 flex justify-center gap-2 lg:mt-0 lg:shrink-0">
+                  {canManageProfile && (
+                    <Link href={publicProfileUrl} className="btn-secondary flex items-center gap-1.5 text-xs px-4 py-2">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Ver perfil
+                    </Link>
+                  )}
+                  {canManageProfile && !isMotelProfile ? (
+                    <Link href="/dashboard/services" className="btn-primary flex items-center gap-1.5 text-xs px-4 py-2">
+                      <Palette className="h-3.5 w-3.5" />
+                      Creator Studio
+                    </Link>
+                  ) : !canManageProfile ? (
+                    <>
+                      <Link href="/cuenta/perfil" className="btn-secondary flex items-center gap-1.5 text-xs px-4 py-2">
+                        <Edit3 className="h-3.5 w-3.5" />
+                        Editar perfil
+                      </Link>
+                      <Link href="/services" className="btn-primary text-xs px-4 py-2">
+                        Explorar servicios
+                      </Link>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Upgrade to Professional CTA (clientes) ── */}
+          {canUpgradeToProfessional && (
+            <div className="border-t border-white/[0.06] px-6 py-5">
+              <Link
+                href="/cuenta/convertir-profesional"
+                className="group relative block overflow-hidden rounded-2xl border border-fuchsia-400/30 bg-gradient-to-r from-fuchsia-600/15 via-violet-600/15 to-pink-600/15 p-4 transition hover:border-fuchsia-400/50 hover:from-fuchsia-600/20 hover:to-pink-600/20"
+              >
+                <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-fuchsia-500/15 blur-3xl" />
+                <div className="relative flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500/40 to-violet-500/40 border border-fuchsia-400/30 shadow-lg shadow-fuchsia-500/20">
+                    <VenetianMask className="h-5 w-5 text-fuchsia-200" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-white">
+                        Conviértete en profesional
+                      </span>
+                      <Sparkles className="h-3.5 w-3.5 text-amber-300" />
+                    </div>
+                    <p className="mt-0.5 text-xs text-white/60 leading-relaxed">
+                      Publica tu perfil y empieza a recibir clientes. Necesitas fotos, género, nombre y tipo de servicio.
+                    </p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-fuchsia-300 transition-transform group-hover:translate-x-1" />
+                </div>
+              </Link>
+            </div>
+          )}
+
+          {/* ── Quick Actions ── */}
+          {quickActions.length > 0 && (
+            <div className="border-t border-white/[0.06] px-6 py-5">
+              <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-white/30 flex items-center gap-2">
+                <Zap className="h-3.5 w-3.5 text-fuchsia-400/60" />
+                Acciones rápidas
+              </h2>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                {quickActions.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <Link
+                      key={action.href}
+                      href={action.href}
+                      className="group flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all hover:border-fuchsia-500/20 hover:bg-white/[0.05] hover:-translate-y-0.5"
+                    >
+                      <Icon className={`h-5 w-5 mb-1.5 ${action.color} transition-transform group-hover:scale-110`} />
+                      <span className="text-[13px] font-medium leading-tight">{action.label}</span>
+                      <span className="mt-0.5 text-[10px] text-white/35 leading-tight">{action.description}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Notificaciones ── */}
+          <div className="border-t border-white/[0.06] px-6 py-5">
+            <h2 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-white/30">
+              <Bell className="h-3.5 w-3.5 text-fuchsia-400/60" />
+              Notificaciones
+            </h2>
+            <div className="space-y-2">
+              <EmailNotificationsToggle />
+              {/* Solo las profesionales reciben clientes por chat. */}
+              {isProfessional && <AutoReplySettings />}
+            </div>
+          </div>
+
+          {/* ── Subscription ── */}
+          {requiresPayment && !statusLoading && subscriptionStatus && (
+            <div className="border-t border-white/[0.06] px-6 py-5">
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-4 w-4 text-white/30 shrink-0" />
+                <span className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">Suscripción</span>
+                {subscriptionStatus.isActive ? (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-[10px]">
+                    {subscriptionStatus.membershipActive ? "Activa" : "Prueba"}
+                  </Badge>
+                ) : (
+                  <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px]">Expirada</Badge>
+                )}
+                <span className="ml-auto text-xs text-white/40">
+                  {subscriptionStatus.isActive
+                    ? `${subscriptionStatus.daysRemaining || 0} días restantes`
+                    : null}
+                </span>
+              </div>
+
+              <div className="mt-3 space-y-2">
+                {isTrialPeriod && (
+                  <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-2">
+                    <p className="text-xs text-amber-300">
+                      Plan de prueba — vence en <span className="font-semibold text-amber-400">{subscriptionStatus.daysRemaining || 0} días</span>
+                    </p>
+                  </div>
+                )}
+
+                {!subscriptionStatus.isActive && (
+                  <p className="text-xs text-red-400 bg-red-500/10 rounded-lg px-3 py-2 border border-red-500/20">
+                    Suscripción expirada. Renuévala para seguir visible.
+                  </p>
+                )}
+
+                {subscriptionStatus.flowSubscriptionStatus === "active" ? (
+                  <div className="flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <RefreshCw className="h-3 w-3 text-emerald-400" />
+                      <span className="text-xs text-emerald-300 font-medium">PAC activo</span>
+                      <span className="text-[11px] text-white/40">
+                        {subscriptionStatus.flowCardType && subscriptionStatus.flowCardLast4
+                          ? `${subscriptionStatus.flowCardType} ****${subscriptionStatus.flowCardLast4}`
+                          : "Tarjeta registrada"}
+                      </span>
+                    </div>
+                    <button onClick={handleSubscribe} className="text-[11px] text-white/40 hover:text-white/70 transition underline underline-offset-2">
+                      Administrar
+                    </button>
+                  </div>
+                ) : !isTrialPeriod ? (
+                  <div className="flex items-center gap-3 pt-1">
+                    <span className="text-xs text-white/50">
+                      ${(subscriptionStatus.subscriptionPrice || 4990).toLocaleString("es-CL")} CLP/mes
+                    </span>
+                    <button
+                      onClick={handleSubscribe}
+                      className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-1.5 text-xs font-medium text-white transition-all hover:shadow-[0_0_16px_rgba(139,92,246,0.3)]"
+                    >
+                      {subscriptionStatus.isActive ? "Renovar" : "Suscribirse"}
+                    </button>
+                  </div>
+                ) : null}
+
+                {subscriptionStatus.recentPayments && subscriptionStatus.recentPayments.length > 0 && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/[0.04] mt-2">
+                    <span className="text-[10px] text-white/25 uppercase tracking-wider shrink-0">Pagos:</span>
+                    <div className="flex gap-3 overflow-x-auto">
+                      {subscriptionStatus.recentPayments.slice(0, 3).map((payment) => (
+                        <span key={payment.id} className="flex items-center gap-1.5 text-[11px] text-white/45 whitespace-nowrap">
+                          <span className={`h-1.5 w-1.5 rounded-full ${
+                            payment.status === "PAID" ? "bg-green-500" :
+                            payment.status === "PENDING" ? "bg-yellow-500" :
+                            "bg-red-500"
+                          }`} />
+                          {new Date(payment.createdAt).toLocaleDateString("es-CL")} · ${payment.amount.toLocaleString("es-CL")}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Visibility + Referral ── */}
+          {showVisibility && (
+            <div className="border-t border-white/[0.06] px-6 py-5">
+              <div className="grid grid-cols-1 gap-3 lg:grid-cols-5">
+                {isProfessional && (
+                  <div className="lg:col-span-3 rounded-xl border border-fuchsia-500/10 bg-gradient-to-br from-fuchsia-600/[0.05] to-transparent p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-fuchsia-400" />
+                      <span className="text-sm font-semibold">Aumenta tu visibilidad</span>
+                    </div>
+                    <p className="text-xs text-white/45 mb-3">
+                      Sube stories, completa tu perfil y activa UMate.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      <Link href="/dashboard/stories?nueva=1" className="inline-flex items-center gap-1 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 px-2.5 py-1 text-[11px] text-fuchsia-300 hover:bg-fuchsia-500/20 transition">
+                        <Camera className="h-3 w-3" /> Story
+                      </Link>
+                      <Link href="/dashboard/services" className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-[11px] text-white/60 hover:bg-white/10 transition">
+                        <Edit3 className="h-3 w-3" /> Perfil
+                      </Link>
+                      <Link href={umateHref} className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-fuchsia-500/15 to-violet-500/15 border border-violet-500/20 px-2.5 py-1 text-[11px] text-violet-300 transition">
+                        <Sparkles className="h-3 w-3" /> UMate
+                      </Link>
+                    </div>
+                  </div>
+                )}
+                <div className={isProfessional ? "lg:col-span-2" : "lg:col-span-5"}>
+                  <ReferralSection />
+                </div>
+              </div>
+            </div>
+          )}
+
+
+
+          {/* ── Admin ── */}
+          {isAdmin && (
+            <div className="border-t border-white/[0.06]">
+              <Link
+                href="/admin"
+                className="flex items-center gap-3 px-6 py-4 hover:bg-white/[0.03] transition"
+              >
+                <Shield className="h-4 w-4 text-amber-400" />
+                <span className="text-sm font-medium">Panel de administración</span>
+                <ChevronRight className="ml-auto h-4 w-4 text-white/20" />
+              </Link>
+            </div>
+          )}
+
+          {/* ── Logout ── */}
+          <div className="border-t border-white/[0.06]">
+            <button
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 px-6 py-4 text-sm text-white/35 transition-all hover:bg-red-500/[0.04] hover:text-red-400"
+            >
+              <LogOut className="h-4 w-4" />
+              Cerrar sesión
+            </button>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="relative rounded-3xl border border-white/10 bg-white/[0.04] backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.3)] p-8 text-center overflow-hidden"
+        >
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-400/50 to-transparent" />
+          <div className="flex justify-center mb-4">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-fuchsia-500/30 to-violet-500/30 blur-2xl scale-150" />
+              <img
+                src="/brand/isotipo-new.png"
+                alt="UZEED"
+                className="relative w-16 h-16 rounded-2xl"
+              />
+            </div>
+          </div>
+          <h1 className="text-xl font-semibold bg-gradient-to-r from-white via-fuchsia-200 to-violet-200 bg-clip-text text-transparent">Accede a tu cuenta</h1>
+          <p className="mt-2 text-sm text-white/50">
+            Inicia sesión para guardar favoritos, chatear y más.
+          </p>
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
+            <Link href="/login" className="btn-primary px-6">Iniciar sesión</Link>
+            <Link href="/register" className="btn-secondary px-6">Crear cuenta</Link>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Referral Program Section ─── */
+
+function ReferralSection() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await apiFetch<any>("/referrals/stats");
+      if (res && typeof res === "object") setData(res);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
+  const generateCode = async () => {
+    setGenerating(true);
+    try {
+      await apiFetch<any>("/referrals/code", { method: "POST" });
+      await fetchStats();
+    } catch {}
+    setGenerating(false);
+  };
+
+  const copyCode = () => {
+    if (!data?.code) return;
+    navigator.clipboard.writeText(data.code);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  if (loading) {
+    return <div className="h-16 rounded-xl bg-white/5 animate-pulse" />;
+  }
+
+  if (!data?.hasCode) {
+    return (
+      <div className="flex h-full items-center gap-3 rounded-xl border border-violet-500/15 bg-violet-600/[0.05] px-4 py-3">
+        <Gift className="h-4 w-4 text-violet-400 shrink-0" />
+        <span className="text-sm text-white/60 flex-1">Invita amigas y gana por cada referida.</span>
+        <button
+          onClick={generateCode}
+          disabled={generating}
+          className="shrink-0 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-1.5 text-xs font-medium text-white transition hover:shadow-[0_0_12px_rgba(139,92,246,0.3)] disabled:opacity-50"
+        >
+          {generating ? "..." : "Obtener código"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-2 rounded-xl border border-violet-500/15 bg-violet-600/[0.05] px-4 py-4">
+      <Gift className="h-5 w-5 text-violet-400" />
+      <p className="text-[10px] text-white/35 uppercase tracking-widest">Código de amigo</p>
+      <span className="text-lg font-bold tracking-wider text-violet-300">{data.code}</span>
+      <button
+        onClick={copyCode}
+        className="flex items-center gap-1 rounded-lg bg-white/5 border border-white/[0.08] px-3 py-1.5 text-xs text-white/50 hover:bg-white/10 transition"
+      >
+        {copied ? <Check className="h-3 w-3 text-green-400" /> : <Copy className="h-3 w-3" />}
+        {copied ? "Copiado" : "Copiar"}
+      </button>
+    </div>
+  );
+}

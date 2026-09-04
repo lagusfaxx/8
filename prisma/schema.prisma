@@ -1,0 +1,2111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ProfileType {
+  CLIENT
+  VIEWER
+  CREATOR
+  PROFESSIONAL
+  ESTABLISHMENT
+  SHOP
+}
+
+enum CategoryKind {
+  PROFESSIONAL
+  ESTABLISHMENT
+  SHOP
+}
+
+enum ProfessionalTier {
+  PREMIUM
+  GOLD
+  SILVER
+}
+
+enum ServiceRequestStatus {
+  PENDIENTE_APROBACION
+  APROBADO
+  ACTIVO
+  PENDIENTE_EVALUACION
+  FINALIZADO
+  RECHAZADO
+  CANCELADO_CLIENTE
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PreferenceGender {
+  MALE
+  FEMALE
+  ALL
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFYING
+  PAID
+  FAILED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum PostType {
+  IMAGE
+  VIDEO
+}
+
+enum NotificationType {
+  SUBSCRIPTION_STARTED
+  SUBSCRIPTION_RENEWED
+  MESSAGE_RECEIVED
+  POST_PUBLISHED
+  SERVICE_PUBLISHED
+  FORUM_REPLY
+  FORUM_NEW_THREAD
+  BOOKING_UPDATE
+  REMINDER_NO_PHOTO
+  REMINDER_INACTIVE
+  REMINDER_VIDEOCALL_CONFIG
+  VIDEOCALL_BOOKED
+  SERVICE_REQUEST_NEW
+  UMATE_PLAN_ACTIVATED
+  UMATE_NEW_SUBSCRIBER
+  UMATE_NEW_POST
+  UMATE_NEW_COMMENT
+  ADMIN_EVENT
+  TRANSFER_REJECTED
+  STORY_LIKE
+  MARKET_NEW_ORDER
+  MARKET_ORDER_PAID
+  MARKET_ORDER_DELIVERED
+  MARKET_ORDER_COMPLETED
+  MARKET_PAYOUT_RELEASED
+  MARKET_ORDER_MESSAGE
+  MARKET_ORDER_CANCELLED
+  PHONE_CHANGE_REVIEWED
+  NAME_CHANGE_REVIEWED
+  FACE_VERIFICATION_REVIEWED
+}
+
+enum PaymentIntentPurpose {
+  CREATOR_SUBSCRIPTION
+  SHOP_PLAN
+  MEMBERSHIP_PLAN
+  TOKEN_PURCHASE
+  UMATE_PLAN
+  PUBLICATE_GOLD
+  MARKETPLACE_ORDER
+}
+
+enum PaymentIntentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+enum PaymentMethod {
+  FLOW
+  TRANSFER
+}
+
+// ── Token / Wallet System ──
+
+enum TokenDepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TokenTxType {
+  DEPOSIT
+  VIDEOCALL_HOLD
+  VIDEOCALL_RELEASE
+  VIDEOCALL_REFUND
+  VIDEOCALL_COMMISSION
+  WITHDRAWAL
+  PENALTY
+  ADJUSTMENT
+  TIP
+  PRIVATE_SHOW
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProfessionalDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PhoneChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum NameChangeRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum FaceVerificationStatus {
+  /// Enlace creado y enviado, todavía sin fotos.
+  PENDING
+  /// La profesional ya envió sus capturas y esperan revisión.
+  SUBMITTED
+  APPROVED
+  REJECTED
+  /// El enlace venció antes de que enviara las fotos.
+  EXPIRED
+}
+
+enum VideocallBookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED_CLIENT
+  NO_SHOW_PROFESSIONAL
+}
+
+model Wallet {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @unique @db.Uuid
+  balance         Int      @default(0) // available tokens
+  heldBalance     Int      @default(0) // tokens held in escrow
+  totalEarned     Int      @default(0) // lifetime earned (professionals)
+  totalSpent      Int      @default(0) // lifetime spent (clients)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deposits     TokenDeposit[]
+  transactions TokenTransaction[]
+  withdrawals  WithdrawalRequest[]
+}
+
+model TokenDeposit {
+  id          String             @id @default(uuid()) @db.Uuid
+  walletId    String             @db.Uuid
+  amount      Int                // tokens requested
+  clpAmount   Int                // CLP paid
+  receiptUrl  String?            // uploaded bank transfer receipt (nullable for Flow)
+  method      PaymentMethod      @default(TRANSFER)
+  paymentIntentId String?        @unique @db.Uuid // links to PaymentIntent for Flow payments
+  status      TokenDepositStatus @default(PENDING)
+  reviewedBy  String?            @db.Uuid
+  reviewedAt  DateTime?
+  rejectReason String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
+}
+
+model TokenTransaction {
+  id          String      @id @default(uuid()) @db.Uuid
+  walletId    String      @db.Uuid
+  type        TokenTxType
+  amount      Int         // positive = credit, negative = debit
+  balance     Int         // balance after this tx
+  referenceId String?     @db.Uuid // booking, deposit, withdrawal id
+  description String?
+  createdAt   DateTime    @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId, createdAt])
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(uuid()) @db.Uuid
+  walletId      String           @db.Uuid
+  amount        Int              // tokens to withdraw
+  clpAmount     Int              // CLP equivalent
+  bankName      String
+  accountType   String           // corriente, vista, ahorro
+  accountNumber String
+  holderName    String
+  holderRut     String
+  status        WithdrawalStatus @default(PENDING)
+  reviewedBy    String?          @db.Uuid
+  reviewedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([status])
+}
+
+// ── Videocall System ──
+
+model VideocallConfig {
+  id                String   @id @default(uuid()) @db.Uuid
+  professionalId    String   @unique @db.Uuid
+  pricePerMinute    Int      // tokens per minute
+  minDurationMin    Int      @default(5)
+  maxDurationMin    Int      @default(60)
+  availableSlots    Json?    // [{ day: 0-6, from: "09:00", to: "22:00" }]
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  professional User              @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  bookings     VideocallBooking[]
+}
+
+model VideocallBooking {
+  id               String                @id @default(uuid()) @db.Uuid
+  configId         String                @db.Uuid
+  clientId         String                @db.Uuid
+  professionalId   String                @db.Uuid
+  scheduledAt      DateTime
+  durationMinutes  Int
+  totalTokens      Int                   // total cost
+  platformFee      Int                   // 10% commission
+  professionalPay  Int                   // 90% to professional
+  status           VideocallBookingStatus @default(PENDING)
+  roomId               String?               // unique room id for the call
+  startedAt            DateTime?
+  endedAt              DateTime?
+  clientJoinedAt       DateTime?             // when client entered the room
+  professionalJoinedAt DateTime?             // when professional entered the room
+  reminderSentAt       DateTime?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  config       VideocallConfig @relation(fields: [configId], references: [id], onDelete: Cascade)
+  client       User            @relation("ClientVideocalls", fields: [clientId], references: [id], onDelete: Cascade)
+  professional User            @relation("ProfessionalVideocalls", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([professionalId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+// ── Live Streaming ──
+
+model LiveStream {
+  id               String    @id @default(uuid()) @db.Uuid
+  hostId           String    @db.Uuid
+  title            String?
+  thumbnailUrl     String?   // periodic frame capture from the live video
+  isActive         Boolean   @default(true)
+  viewerCount      Int       @default(0)
+  maxViewers       Int       @default(10)
+  privateShowPrice Int?      // tokens — host-configured price for private shows
+  totalTipsEarned  Int       @default(0) // running total of tips received this stream
+  startedAt        DateTime  @default(now())
+  endedAt          DateTime?
+
+  host         User              @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  messages     LiveChatMessage[]
+  tips         LiveTip[]
+  tipOptions   LiveTipOption[]
+  privateShows PrivateShow[]
+
+  @@index([hostId])
+  @@index([isActive])
+}
+
+// ── Live Tips ──
+
+model LiveTip {
+  id         String   @id @default(uuid()) @db.Uuid
+  streamId   String   @db.Uuid
+  senderId   String   @db.Uuid
+  receiverId String   @db.Uuid
+  amount     Int      // tokens
+  message    String?  // optional message with tip
+  optionId   String?  @db.Uuid // if tip was for a redeemable option
+  createdAt  DateTime @default(now())
+
+  stream LiveStream    @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  option LiveTipOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+
+  @@index([streamId, createdAt])
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model LiveTipOption {
+  id          String   @id @default(uuid()) @db.Uuid
+  streamId    String?  @db.Uuid // null = global option for this host
+  hostId      String   @db.Uuid
+  label       String   // e.g. "Flash", "Dance", "Song Request"
+  price       Int      // tokens
+  emoji       String?  // optional emoji icon
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stream LiveStream? @relation(fields: [streamId], references: [id], onDelete: Cascade)
+  tips   LiveTip[]
+
+  @@index([hostId])
+}
+
+// ── Private Shows ──
+
+model PrivateShow {
+  id         String   @id @default(uuid()) @db.Uuid
+  streamId   String   @db.Uuid
+  hostId     String   @db.Uuid
+  buyerId    String   @db.Uuid
+  price      Int      // tokens paid
+  isActive   Boolean  @default(true)
+  startedAt  DateTime @default(now())
+  endedAt    DateTime?
+
+  stream LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  @@index([streamId])
+  @@index([buyerId])
+  @@index([hostId])
+}
+
+
+model LiveChatMessage {
+  id         String   @id @default(uuid()) @db.Uuid
+  streamId   String   @db.Uuid
+  userId     String   @db.Uuid
+  message    String
+  createdAt  DateTime @default(now())
+
+  stream LiveStream @relation(fields: [streamId], references: [id], onDelete: Cascade)
+
+  @@index([streamId, createdAt])
+}
+
+// ── Platform Configuration ──
+
+model PlatformConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id                  String            @id @default(uuid()) @db.Uuid
+  email               String            @unique
+  username            String            @unique
+  passwordHash        String?
+  displayName         String?
+  phone               String?
+  gender              Gender?
+  preferenceGender    PreferenceGender?
+  profileType         ProfileType       @default(VIEWER)
+  address             String?
+  city                String?
+  latitude            Float?
+  longitude           Float?
+  categoryId          String?           @db.Uuid
+  isActive            Boolean           @default(true)
+  isVerified          Boolean           @default(false)
+  verifiedAt          DateTime?
+  verifiedByPhone     String?
+  tier                ProfessionalTier?
+  isOnline            Boolean           @default(false)
+  lastSeen            DateTime?
+  avatarUrl           String?
+  coverUrl            String?
+  coverPositionX      Float?
+  coverPositionY      Float?
+  bio                 String?
+  birthdate           DateTime?
+  serviceCategory     String?
+  serviceDescription  String?
+  heightCm            Int?
+  weightKg            Int?
+  measurements        String?
+  hairColor           String?
+  skinTone            String?
+  languages           String?
+  serviceStyleTags    String?
+  primaryCategory     String?
+  profileTags         String[]          @default([])
+  serviceTags         String[]          @default([])
+  avgResponseMinutes  Int?
+  availabilityNote    String?
+  baseRate            Int?
+  minDurationMinutes  Int?
+  acceptsIncalls      Boolean?
+  acceptsOutcalls     Boolean?
+  subscriptionPrice   Int?              @default(2500)
+  shopTrialEndsAt     DateTime?
+  termsAcceptedAt     DateTime?
+  allowFreeMessages   Boolean           @default(false)
+  /// Respuesta automática de la profesional: se envía sola 20 segundos después
+  /// del primer mensaje de un cliente. El cliente la ve como un mensaje normal
+  /// y para la profesional el mensaje del cliente sigue sin leer.
+  autoReplyEnabled    Boolean           @default(false)
+  autoReplyMessage    String?
+  /// Aviso por correo de mensajes sin leer. Se puede desactivar desde la
+  /// cuenta o con el enlace de baja que va en cada correo.
+  emailOnNewMessage   Boolean           @default(true)
+  role                Role              @default(USER)
+  membershipExpiresAt DateTime?
+  flowCustomerId      String?           @unique
+  flowSubscriptionId  String?           @unique
+  flowCardType        String?
+  flowCardLast4       String?
+  completedServices   Int               @default(0)
+  profileViews        Int               @default(0)
+  reviewTagsSummary   Json?
+  adminManaged        Boolean           @default(false)
+  adminQualityScore   Float?
+  passwordSetToken          String?
+  passwordSetTokenExpiresAt DateTime?
+  twoFactorSecret           String?
+  twoFactorEnabled          Boolean           @default(false)
+  twoFactorEnrolledAt       DateTime?
+  twoFactorLastUsedStep     BigInt?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  posts                    Post[]
+  payments                 Payment[]
+  subscriptions            KhipuSubscription[]
+  profileSubscriptions     ProfileSubscription[] @relation("ProfileSubscriptions")
+  profileSubscriptionsByMe ProfileSubscription[] @relation("ProfileSubscriber")
+  services                 ServiceItem[]
+  profileMedia             ProfileMedia[]
+  paymentIntents           PaymentIntent[]       @relation("SubscriberPaymentIntents")
+  profilePaymentIntents    PaymentIntent[]       @relation("ProfilePaymentIntents")
+  sentMessages             Message[]             @relation("SentMessages")
+  receivedMessages         Message[]             @relation("ReceivedMessages")
+  receivedRatings          ServiceRating[]       @relation("ProfileRatings")
+  givenRatings             ServiceRating[]       @relation("GivenRatings")
+  receivedProfileReviews   ProfileReviewSurvey[] @relation("ProfileReviewsReceived")
+  givenProfileReviews      ProfileReviewSurvey[] @relation("ProfileReviewsGiven")
+  notifications            Notification[]
+  category                 Category?             @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  favorites                Favorite[]            @relation("FavoritesByUser")
+  favoritedBy              Favorite[]            @relation("FavoritesForProfessional")
+  clientRequests           ServiceRequest[]      @relation("ClientRequests")
+  professionalRequests     ServiceRequest[]      @relation("ProfessionalRequests")
+  products                Product[] @relation("ShopProducts")
+  shopCategories         ShopCategory[]
+  motelRooms              MotelRoom[] @relation("MotelRooms")
+  motelPacks              MotelPack[] @relation("MotelPacks")
+  motelPromotions         MotelPromotion[] @relation("MotelPromotions")
+  pushSubscriptions      PushSubscription[]
+  stories                Story[]
+  storyLikes             StoryLike[]
+  forumThreads           ForumThread[]
+  forumPosts             ForumPost[]
+  wallet                 Wallet?
+  videocallConfig        VideocallConfig?
+  clientVideocalls       VideocallBooking[] @relation("ClientVideocalls")
+  professionalVideocalls VideocallBooking[] @relation("ProfessionalVideocalls")
+  liveStreams            LiveStream[]
+
+  // Admin profile ratings
+  adminRatingsReceived   AdminProfileRating[] @relation("AdminRatingsReceived")
+  adminRatingsGiven      AdminProfileRating[] @relation("AdminRatingsGiven")
+
+  // U-Mate relations
+  umateCreator           UmateCreator?
+  umateSubscriptions     UmateSubscription[]
+  umateCreatorSubs       UmateCreatorSub[]   @relation("UmateSubscriber")
+  umateDirectSubs        UmateDirectSubscription[] @relation("UmateDirectSubUser")
+  umateLikes             UmateLike[]
+  umateComments          UmateComment[]
+
+  // Referral system
+  creatorReferralCode    CreatorReferralCode? @relation("CreatorReferralCode")
+  referralRedemption     ReferralRedemption?  @relation("ReferralProfessional")
+
+  // Professional accreditation documents (e.g. "profesional con examenes")
+  professionalDocuments     ProfessionalDocument[] @relation("ProfessionalDocuments")
+  professionalDocsReviewed  ProfessionalDocument[] @relation("ProfessionalDocumentReviewer")
+  phoneChangeRequests       PhoneChangeRequest[]   @relation("PhoneChangeRequests")
+  phoneChangesReviewed      PhoneChangeRequest[]   @relation("PhoneChangeReviewer")
+  nameChangeRequests        NameChangeRequest[]    @relation("NameChangeRequests")
+  nameChangesReviewed       NameChangeRequest[]    @relation("NameChangeReviewer")
+  faceVerifications         FaceVerification[]     @relation("FaceVerifications")
+  faceVerificationsCreated  FaceVerification[]     @relation("FaceVerificationCreator")
+  faceVerificationsReviewed FaceVerification[]     @relation("FaceVerificationReviewer")
+
+  // Marketplace
+  marketSeller           MarketSeller?        @relation("MarketSellerUser")
+  marketProducts         MarketProduct[]      @relation("MarketProductsByUser")
+  marketPurchases        MarketOrder[]        @relation("MarketPurchases")
+  marketSales            MarketOrder[]        @relation("MarketSales")
+  marketOrderMessages    MarketOrderMessage[] @relation("MarketOrderMessages")
+  marketLedger           MarketLedgerEntry[]  @relation("MarketLedger")
+  marketWithdrawals      MarketWithdrawal[]   @relation("MarketWithdrawals")
+  marketReviews          MarketReview[]       @relation("MarketReviews")
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+
+model Post {
+  id        String   @id @default(uuid()) @db.Uuid
+  authorId  String?  @db.Uuid
+  title     String
+  body      String
+  isPublic  Boolean  @default(false)
+  price     Int      @default(0)
+  type      PostType @default(IMAGE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User?  @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  media  Media[]
+
+  @@index([authorId, createdAt])
+}
+
+model Media {
+  id        String    @id @default(uuid()) @db.Uuid
+  postId    String    @db.Uuid
+  type      MediaType
+  url       String
+  createdAt DateTime  @default(now())
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id               String        @id @default(uuid()) @db.Uuid
+  userId           String        @db.Uuid
+  khipuPaymentId   String?       @unique
+  subscriptionId   String?       @db.Uuid
+  amount           Int
+  status           PaymentStatus @default(PENDING)
+  membershipDays   Int           @default(30)
+  paymentUrl       String?
+  paidAt           DateTime?
+  transactionId    String?
+  providerPaymentId String?
+  currency         String        @default("CLP")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription KhipuSubscription? @relation("KhipuSubscriptionPayments", fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+model KhipuSubscription {
+  id                 String        @id @default(uuid()) @db.Uuid
+  userId             String        @db.Uuid
+  subscriptionId     String        @unique
+  status             String        @default("PENDING")
+  redirectUrl        String?
+  amount             Int           @default(4990)
+  frequency          String        @default("MONTHLY")
+  nextPaymentDate    DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments Payment[] @relation("KhipuSubscriptionPayments")
+}
+
+model ProfileSubscription {
+  id           String   @id @default(uuid()) @db.Uuid
+  subscriberId String   @db.Uuid
+  profileId    String   @db.Uuid
+  status       String   @default("ACTIVE")
+  price        Int
+  startedAt    DateTime @default(now())
+  expiresAt    DateTime
+
+  subscriber User @relation("ProfileSubscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  profile    User @relation("ProfileSubscriptions", fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, profileId])
+}
+
+model ServiceItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  ownerId     String   @db.Uuid
+  categoryId  String?  @db.Uuid
+  title       String
+  description String?
+  category    String?
+  price       Int?
+  address     String?
+  latitude    Float?
+  longitude   Float?
+  approxAreaM Int?
+  locationVerified Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  durationMinutes Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  categoryRel Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  media    ServiceMedia[]
+}
+
+model ProfileMedia {
+  id        String    @id @default(uuid()) @db.Uuid
+  ownerId   String    @db.Uuid
+  type      MediaType
+  url       String
+  isLocked  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model ServiceMedia {
+  id            String    @id @default(uuid()) @db.Uuid
+  serviceItemId String    @db.Uuid
+  type          MediaType
+  url           String
+  createdAt     DateTime  @default(now())
+
+  serviceItem ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PaymentIntent {
+  id                String               @id @default(uuid()) @db.Uuid
+  subscriberId      String               @db.Uuid
+  profileId         String?              @db.Uuid
+  purpose           PaymentIntentPurpose
+  method            PaymentMethod        @default(FLOW)
+  status            PaymentIntentStatus  @default(PENDING)
+  amount            Int
+  providerPaymentId String?
+  paymentUrl        String?
+  notes             String?
+  paidAt            DateTime?
+  reviewedBy        String?
+  reviewedAt        DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  subscriber User  @relation("SubscriberPaymentIntents", fields: [subscriberId], references: [id], onDelete: Cascade)
+  profile    User? @relation("ProfilePaymentIntents", fields: [profileId], references: [id], onDelete: SetNull)
+}
+
+model PendingGoldRegistration {
+  id        String   @id @default(uuid()) @db.Uuid
+  formData  String
+  fileUrls  String   @default("[]")
+  flowToken String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model Message {
+  id        String    @id @default(uuid()) @db.Uuid
+  fromId    String    @db.Uuid
+  toId      String    @db.Uuid
+  body      String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+
+  from User @relation("SentMessages", fields: [fromId], references: [id], onDelete: Cascade)
+  to   User @relation("ReceivedMessages", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@index([fromId])
+  @@index([toId])
+  @@index([createdAt])
+  // Barrido del worker de avisos por correo: mensajes sin leer por destinatario.
+  @@index([toId, readAt, createdAt])
+}
+
+/// Control de envío de la respuesta automática: una por conversación cada
+/// 24 horas, para que un cliente que insiste no reciba el mismo texto varias
+/// veces seguidas. Vive aparte de Message a propósito: la fila del mensaje
+/// enviado tiene que ser indistinguible de uno escrito a mano.
+model AutoReplyLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  professionalId String   @db.Uuid
+  clientId       String   @db.Uuid
+  sentAt         DateTime @default(now())
+
+  @@unique([professionalId, clientId])
+  @@index([sentAt])
+}
+
+model ServiceRating {
+  id        String   @id @default(uuid()) @db.Uuid
+  profileId String   @db.Uuid
+  raterId   String   @db.Uuid
+  rating    Int
+  createdAt DateTime @default(now())
+
+  profile User @relation("ProfileRatings", fields: [profileId], references: [id], onDelete: Cascade)
+  rater   User @relation("GivenRatings", fields: [raterId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, raterId])
+}
+
+model Category {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String
+  slug           String          @unique
+  displayName    String
+  kind           CategoryKind
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  professionals  User[]
+  establishments Establishment[]
+  serviceItems   ServiceItem[]
+  products       Product[]
+}
+
+model Establishment {
+  id           String               @id @default(uuid()) @db.Uuid
+  categoryId   String               @db.Uuid
+  name         String
+  city         String
+  address      String
+  phone        String
+  description  String?
+  latitude     Float?
+  longitude    Float?
+  galleryUrls  String[]             @default([])
+  websiteUrl   String?
+  externalOnly Boolean              @default(false)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  category Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  reviews  EstablishmentReview[]
+}
+
+model Favorite {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @db.Uuid
+  professionalId String   @db.Uuid
+  createdAt      DateTime @default(now())
+
+  user         User @relation("FavoritesByUser", fields: [userId], references: [id], onDelete: Cascade)
+  professional User @relation("FavoritesForProfessional", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, professionalId])
+  @@index([userId])
+}
+
+model ServiceRequest {
+  id                    String               @id @default(uuid()) @db.Uuid
+  clientId              String               @db.Uuid
+  professionalId        String               @db.Uuid
+  status                ServiceRequestStatus @default(PENDIENTE_APROBACION)
+  requestedDate         String?
+  requestedTime         String?
+  agreedLocation        String?
+  clientComment         String?
+  professionalPriceClp  Int?
+  professionalDurationM Int?
+  professionalComment   String?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  client       User               @relation("ClientRequests", fields: [clientId], references: [id], onDelete: Cascade)
+  professional User               @relation("ProfessionalRequests", fields: [professionalId], references: [id], onDelete: Cascade)
+  review       ProfessionalReview?
+
+  @@index([clientId, status])
+  @@index([professionalId, status])
+}
+
+model ProfessionalReview {
+  id               String   @id @default(uuid()) @db.Uuid
+  serviceRequestId String   @unique @db.Uuid
+  hearts           Int
+  comment          String?
+  createdAt        DateTime @default(now())
+
+  serviceRequest ServiceRequest @relation(fields: [serviceRequestId], references: [id], onDelete: Cascade)
+}
+
+model EstablishmentReview {
+  id              String   @id @default(uuid()) @db.Uuid
+  establishmentId String   @db.Uuid
+  stars           Int
+  comment         String?
+  createdAt       DateTime @default(now())
+
+  establishment Establishment @relation(fields: [establishmentId], references: [id], onDelete: Cascade)
+}
+
+
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  shopId      String   @db.Uuid
+  categoryId  String?  @db.Uuid
+  shopCategoryId String? @db.Uuid
+  name        String
+  description String?
+  price       Int
+  stock       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  shop      User           @relation("ShopProducts", fields: [shopId], references: [id], onDelete: Cascade)
+  category  Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  shopCategory ShopCategory? @relation(fields: [shopCategoryId], references: [id], onDelete: SetNull)
+  media     ProductMedia[]
+}
+
+model ShopCategory {
+  id        String   @id @default(uuid()) @db.Uuid
+  shopId    String   @db.Uuid
+  name      String
+  slug      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop      User     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  products  Product[]
+
+  @@unique([shopId, slug])
+  @@index([shopId])
+}
+
+model ProductMedia {
+  id        String   @id @default(uuid()) @db.Uuid
+  productId String   @db.Uuid
+  url       String
+  pos       Int      @default(0)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model MotelRoom {
+  id              String   @id @default(uuid()) @db.Uuid
+  establishmentId String   @db.Uuid
+  name            String
+  description     String?
+  price           Int
+  roomType        String?
+  amenities       String[] @default([])
+  photoUrls       String[] @default([])
+  price3h         Int?
+  price6h         Int?
+  priceNight      Int?
+  location        String?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment User @relation("MotelRooms", fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId])
+}
+
+model MotelPack {
+  id              String   @id @default(uuid()) @db.Uuid
+  establishmentId String   @db.Uuid
+  name            String
+  description     String?
+  price           Int
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment User @relation("MotelPacks", fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId])
+}
+
+model MotelPromotion {
+  id              String   @id @default(uuid()) @db.Uuid
+  establishmentId String   @db.Uuid
+  title           String
+  description     String?
+  discountPercent Int?
+  discountClp     Int?
+  roomId          String?  @db.Uuid
+  roomIds         String[] @default([]) @db.Uuid
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  establishment User @relation("MotelPromotions", fields: [establishmentId], references: [id], onDelete: Cascade)
+
+  @@index([establishmentId])
+}
+
+
+model Story {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  mediaUrl   String
+  mediaType  MediaType @default(IMAGE)
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  likeCount  Int       @default(0)
+  showInHome Boolean   @default(false)
+  /// Oculta la historia en toda la app (feed de historias y rotación del home)
+  /// sin borrarla, para que el admin pueda revertirlo.
+  isHidden   Boolean   @default(false)
+  /// Fecha de la última renovación hecha desde el admin. Cuando está presente
+  /// la historia se ordena y se muestra como si se hubiera publicado en esa
+  /// fecha, manteniendo intacta la fecha real de creación.
+  renewedAt  DateTime?
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes StoryLike[]
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([showInHome, expiresAt])
+  @@index([isHidden, expiresAt])
+}
+
+model StoryLike {
+  id          String   @id @default(uuid()) @db.Uuid
+  storyId     String   @db.Uuid
+  userId      String?  @db.Uuid
+  anonymousId String?
+  createdAt   DateTime @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@unique([storyId, anonymousId])
+  @@index([storyId])
+  @@index([userId])
+}
+
+enum BannerAdTier {
+  STANDARD
+  GOLD
+}
+
+model Banner {
+  id        String   @id @default(uuid()) @db.Uuid
+  title     String
+  imageUrl  String
+  linkUrl   String?
+  position  String   @default("RIGHT") // LEFT | RIGHT | INLINE
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  professionalId String? @db.Uuid
+  promoImageUrl  String?
+  adTier BannerAdTier @default(STANDARD)
+  imageFocusX Float  @default(50)
+  imageFocusY Float  @default(20)
+  imageZoom   Float  @default(1)
+  startsAt DateTime?
+  endsAt   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ProfileReviewSurvey {
+  id            String   @id @default(uuid()) @db.Uuid
+  profileId     String   @db.Uuid
+  reviewerId    String   @db.Uuid
+  ratingBody    Int      // 1-10
+  ratingFace    Int      // 1-10
+  ratingPhotos  Int      // 1-10 que tan parecida a las fotos
+  ratingService Int      // 1-10 calidad del servicio
+  ratingVibe    Int      // 1-10 trato y ambiente
+  comment       String?
+  overallScore  Float    // promedio calculado
+  createdAt     DateTime @default(now())
+
+  profile  User @relation("ProfileReviewsReceived", fields: [profileId], references: [id], onDelete: Cascade)
+  reviewer User @relation("ProfileReviewsGiven", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, reviewerId])
+  @@index([profileId])
+}
+
+// ── Forum System ──
+
+model ForumCategory {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String        @unique
+  description String?
+  sortOrder   Int           @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  threads ForumThread[]
+}
+
+model ForumThread {
+  id         String   @id @default(uuid()) @db.Uuid
+  categoryId String   @db.Uuid
+  authorId   String   @db.Uuid
+  title      String
+  isPinned   Boolean  @default(false)
+  isLocked   Boolean  @default(false)
+  views      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastPostAt DateTime @default(now())
+
+  category ForumCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  posts    ForumPost[]
+
+  @@index([categoryId, lastPostAt])
+  @@index([authorId])
+}
+
+model ForumPost {
+  id        String   @id @default(uuid()) @db.Uuid
+  threadId  String   @db.Uuid
+  authorId  String   @db.Uuid
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  thread ForumThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([authorId])
+}
+
+// ── Analytics ──
+
+model PageView {
+  id        String   @id @default(uuid()) @db.Uuid
+  path      String
+  userId    String?  @db.Uuid
+  sessionId String?
+  referrer  String?
+  userAgent String?
+  city      String?
+  country   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([path, createdAt])
+}
+
+model UserAction {
+  id        String   @id @default(uuid()) @db.Uuid
+  action    String   // e.g. "view_profile", "send_message", "book_videocall", "favorite", "search"
+  userId    String?  @db.Uuid
+  targetId  String?  @db.Uuid
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([createdAt])
+}
+
+model ReminderLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  type      String   // "no_photo", "inactive_48h", "videocall_config"
+  createdAt DateTime @default(now())
+
+  @@unique([userId, type])
+  @@index([type, createdAt])
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ██  U-MATE  —  Creator subscription vertical
+// ══════════════════════════════════════════════════════════════════════
+
+enum UmateCreatorStatus {
+  DRAFT
+  PENDING_TERMS
+  PENDING_BANK
+  PENDING_REVIEW
+  ACTIVE
+  SUSPENDED
+}
+
+enum UmatePlanTier {
+  SILVER
+  GOLD
+  DIAMOND
+}
+
+enum UmateSubStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum UmatePostVisibility {
+  FREE
+  PREMIUM
+}
+
+enum UmateLedgerType {
+  PLAN_PURCHASE
+  SLOT_ACTIVATION
+  CREATOR_PAYOUT
+  PLATFORM_COMMISSION
+  IVA
+  FLOW_FEE
+  ADJUSTMENT
+  WITHDRAWAL
+  REFUND
+}
+
+// ── Creator profile (extends User, does not replace) ──
+
+model UmateCreator {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @unique @db.Uuid
+  displayName     String
+  bio             String?
+  avatarUrl       String?
+  coverUrl        String?
+
+  // Bank details for payouts
+  bankName        String?
+  accountType     String?
+  accountNumber   String?
+  holderName      String?
+  holderRut       String?
+
+  // Compliance
+  status          UmateCreatorStatus @default(DRAFT)
+  termsAcceptedAt   DateTime?
+  rulesAcceptedAt   DateTime?
+  contractAcceptedAt DateTime?
+
+  // Forensic proof of acceptance (IP + user agent + document version at time of acceptance)
+  termsAcceptedIp        String?
+  termsAcceptedUserAgent String?
+  termsAcceptedVersion   String?
+  rulesAcceptedIp        String?
+  rulesAcceptedUserAgent String?
+  rulesAcceptedVersion   String?
+  contractAcceptedIp        String?
+  contractAcceptedUserAgent String?
+  contractAcceptedVersion   String?
+
+  // Denormalized stats
+  subscriberCount Int   @default(0)
+  totalPosts      Int   @default(0)
+  totalLikes      Int   @default(0)
+
+  // Per-creator monthly subscription price (CLP, pesos). Default 9990.
+  monthlyPriceCLP Int   @default(9990)
+
+  // Flow PAC plan tied to this creator's tariff (lazy-created on first subscriber)
+  flowPlanId      String? @unique
+
+  // CLP balances (integer = pesos, not cents)
+  pendingBalance  Int   @default(0)
+  availableBalance Int  @default(0)
+  totalEarned     Int   @default(0)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user              User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts             UmatePost[]
+  creatorSubs       UmateCreatorSub[]
+  directSubscriptions UmateDirectSubscription[] @relation("CreatorDirectSubs")
+  ledgerEntries     UmateLedgerEntry[]         @relation("CreatorLedger")
+
+  @@index([status])
+}
+
+// ── Plan definitions (admin-managed) ──
+
+model UmatePlan {
+  id        String        @id @default(uuid()) @db.Uuid
+  tier      UmatePlanTier @unique
+  name      String
+  priceCLP  Int           // e.g. 14990
+  maxSlots  Int           // 1, 3, or 5
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  subscriptions UmateSubscription[]
+}
+
+// ── User subscription to a U-Mate plan ──
+
+model UmateSubscription {
+  id         String         @id @default(uuid()) @db.Uuid
+  userId     String         @db.Uuid
+  planId     String         @db.Uuid
+  status     UmateSubStatus @default(ACTIVE)
+  slotsTotal Int
+  slotsUsed  Int            @default(0)
+  cycleStart DateTime
+  cycleEnd   DateTime
+
+  paymentIntentId String? @db.Uuid
+
+  createdAt  DateTime @default(now())
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan       UmatePlan         @relation(fields: [planId], references: [id])
+  creatorSubs UmateCreatorSub[]
+
+  @@index([userId, status])
+  @@index([cycleEnd])
+}
+
+// ── Slot activation: user subscribes to a specific creator ──
+
+model UmateCreatorSub {
+  id              String   @id @default(uuid()) @db.Uuid
+  subscriptionId  String   @db.Uuid
+  subscriberId    String   @db.Uuid
+  creatorId       String   @db.Uuid
+  activatedAt     DateTime @default(now())
+  expiresAt       DateTime
+
+  subscription UmateSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscriber   User              @relation("UmateSubscriber", fields: [subscriberId], references: [id], onDelete: Cascade)
+  creator      UmateCreator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, creatorId])
+  @@index([subscriberId, expiresAt])
+  @@index([creatorId])
+}
+
+// ── Direct per-creator subscription (OnlyFans-style, PAC recurring billing) ──
+
+enum UmateDirectSubStatus {
+  ACTIVE
+  CANCELLED   // User cancelled but still has access until currentPeriodEnd
+  EXPIRED     // Period ended after cancellation, access revoked
+  PAST_DUE    // PAC charge failed
+}
+
+model UmateDirectSubscription {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userId             String               @db.Uuid
+  creatorId          String               @db.Uuid
+
+  // Pricing snapshot (creator's price at subscription time)
+  priceCLP           Int
+
+  // PAC / card info (snapshot at subscription time)
+  cardBrand          String?              // visa, mastercard, amex
+  cardLast4          String?              // last 4 digits
+  cardHolderName     String?
+  pacMandateId       String?              // legacy/simulated recurring mandate id
+  paymentIntentId    String?              @db.Uuid
+
+  // Flow PAC IDs (real production integration)
+  flowCustomerId     String?              // Flow customer id used for this sub
+  flowSubscriptionId String?   @unique    // Flow recurring subscription id
+
+  status             UmateDirectSubStatus @default(ACTIVE)
+  cancelAtPeriodEnd  Boolean              @default(false)
+
+  startedAt          DateTime             @default(now())
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelledAt        DateTime?
+
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  user    User         @relation("UmateDirectSubUser", fields: [userId], references: [id], onDelete: Cascade)
+  creator UmateCreator @relation("CreatorDirectSubs", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, creatorId])
+  @@index([userId, status])
+  @@index([creatorId, status])
+  @@index([currentPeriodEnd])
+}
+
+// ── Content posts ──
+
+model UmatePost {
+  id          String              @id @default(uuid()) @db.Uuid
+  creatorId   String              @db.Uuid
+  caption     String?
+  visibility  UmatePostVisibility @default(FREE)
+  likeCount   Int                 @default(0)
+  viewCount   Int                 @default(0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  commentCount Int                 @default(0)
+
+  // Per-publication authorship attestation (creator swears they own the content,
+  // it was produced legally, and every person depicted is 18+ and consented)
+  authorshipAttestedAt        DateTime?
+  authorshipAttestedIp        String?
+  authorshipAttestedUserAgent String?
+  authorshipAttestedVersion   String?
+
+  creator  UmateCreator    @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  media    UmatePostMedia[]
+  likes    UmateLike[]
+  comments UmateComment[]
+
+  @@index([creatorId, createdAt])
+  @@index([visibility, createdAt])
+}
+
+model UmatePostMedia {
+  id           String              @id @default(uuid()) @db.Uuid
+  postId       String              @db.Uuid
+  type         MediaType
+  url          String
+  thumbnailUrl String?
+  pos          Int                 @default(0)
+  visibility   UmatePostVisibility @default(FREE)
+
+  post UmatePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+}
+
+// ── Likes ──
+
+model UmateLike {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  post UmatePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+// ── Comments ──
+
+model UmateComment {
+  id        String   @id @default(uuid()) @db.Uuid
+  postId    String   @db.Uuid
+  userId    String   @db.Uuid
+  text      String
+  createdAt DateTime @default(now())
+
+  post UmatePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+  @@index([userId])
+}
+
+// ── Financial ledger (CLP-based, all U-Mate money flows) ──
+
+model UmateLedgerEntry {
+  id            String          @id @default(uuid()) @db.Uuid
+  creatorId     String?         @db.Uuid
+  type          UmateLedgerType
+
+  // All amounts in CLP (pesos)
+  grossAmount   Int @default(0)
+  ivaAmount     Int @default(0)
+  flowFee       Int @default(0)
+  platformFee   Int @default(0)
+  creatorPayout Int @default(0)
+  netAmount     Int @default(0)
+
+  description   String?
+  referenceId   String? @db.Uuid
+  referenceType String?         // "subscription", "withdrawal", "adjustment"
+
+  createdAt     DateTime @default(now())
+  maturedAt     DateTime?       // when pendingBalance was moved to availableBalance
+
+  creator UmateCreator? @relation("CreatorLedger", fields: [creatorId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId, createdAt])
+  @@index([type, createdAt])
+}
+
+// ── Payout batches (future: batch creator payouts) ──
+
+model UmatePayoutBatch {
+  id          String   @id @default(uuid()) @db.Uuid
+  status      String   @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  totalAmount Int      @default(0) // CLP total
+  creatorCount Int     @default(0)
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ── Creator withdrawal requests (CLP) ──
+
+model UmateWithdrawal {
+  id            String   @id @default(uuid()) @db.Uuid
+  creatorId     String   @db.Uuid
+  amount        Int      // CLP
+  bankName      String
+  accountType   String
+  accountNumber String
+  holderName    String
+  holderRut     String
+  status        WithdrawalStatus @default(PENDING)
+  reviewedBy    String?  @db.Uuid
+  reviewedAt    DateTime?
+  rejectReason  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([creatorId])
+  @@index([status])
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ██  CREATOR REFERRAL SYSTEM
+// ══════════════════════════════════════════════════════════════════════
+
+enum ReferralCycleStatus {
+  ACTIVE
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+}
+
+// Each creator gets one referral code; cycles track 20-day windows
+model CreatorReferralCode {
+  id          String   @id @default(uuid()) @db.Uuid
+  creatorId   String   @unique @db.Uuid
+  code        String   @unique // e.g. "LUNA2024", 6-8 char alphanumeric
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  creator     User                @relation("CreatorReferralCode", fields: [creatorId], references: [id], onDelete: Cascade)
+  redemptions ReferralRedemption[]
+  cycles      ReferralCycle[]
+
+  @@index([code])
+}
+
+// 20-day referral cycle
+model ReferralCycle {
+  id              String              @id @default(uuid()) @db.Uuid
+  referralCodeId  String              @db.Uuid
+  cycleStart      DateTime
+  cycleEnd        DateTime            // cycleStart + 20 days
+  status          ReferralCycleStatus @default(ACTIVE)
+  totalReferrals  Int                 @default(0)
+  baseAmount      Int                 @default(0)  // CLP: referrals * 10,000
+  bonusAmount     Int                 @default(0)  // CLP: tier bonuses
+  totalAmount     Int                 @default(0)  // CLP: base + bonus
+  paidAt          DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  referralCode CreatorReferralCode  @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+  redemptions  ReferralRedemption[]
+
+  @@index([referralCodeId, status])
+  @@index([cycleEnd])
+  @@index([status])
+}
+
+enum ReferralRedemptionStatus {
+  PENDING     // registered but conditions not met yet
+  VALIDATED   // all conditions met, counts toward cycle
+  REJECTED    // did not meet conditions in time (account deleted, etc.)
+}
+
+// Each professional registration via referral code
+model ReferralRedemption {
+  id              String                    @id @default(uuid()) @db.Uuid
+  referralCodeId  String                    @db.Uuid
+  cycleId         String?                   @db.Uuid
+  professionalId  String                    @unique @db.Uuid // the professional who registered
+  amountCLP       Int                       @default(10000)   // CLP credited for this referral
+  status          ReferralRedemptionStatus  @default(PENDING)
+  validatedAt     DateTime?
+
+  // Condition tracking
+  hasPhoto        Boolean   @default(false)
+  isVerified      Boolean   @default(false)
+  isActive48h     Boolean   @default(false)
+
+  createdAt       DateTime  @default(now())
+
+  referralCode CreatorReferralCode @relation(fields: [referralCodeId], references: [id], onDelete: Cascade)
+  cycle        ReferralCycle?      @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  professional User                @relation("ReferralProfessional", fields: [professionalId], references: [id], onDelete: Cascade)
+
+  @@index([referralCodeId, createdAt])
+  @@index([cycleId])
+  @@index([status])
+}
+
+model AdminProfileRating {
+  id                   String   @id @default(uuid()) @db.Uuid
+  profileId            String   @db.Uuid
+  adminId              String   @db.Uuid
+  ratingPhotoQuality   Int      // 1-10
+  ratingCompleteness   Int      // 1-10
+  ratingPresentation   Int      // 1-10
+  ratingAuthenticity   Int      // 1-10
+  ratingValue          Int      // 1-10
+  overallScore         Float    // promedio calculado
+  notes                String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  profile User @relation("AdminRatingsReceived", fields: [profileId], references: [id], onDelete: Cascade)
+  admin   User @relation("AdminRatingsGiven", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, adminId])
+  @@index([profileId])
+  @@index([overallScore])
+}
+
+// Professional accreditation documents. Creators (profesionales) upload
+// medical exams / licenses here. An admin reviews and, once APPROVED,
+// can grant the "profesional con examenes" tag on the user profile.
+model ProfessionalDocument {
+  id           String                     @id @default(uuid()) @db.Uuid
+  userId       String                     @db.Uuid
+  fileUrl      String                     // public URL under /uploads/professional-docs/...
+  originalName String                     // display name shown to admin/creator
+  mimeType     String
+  sizeBytes    Int
+  note         String?                    // optional note from creator
+  status       ProfessionalDocumentStatus @default(PENDING)
+  reviewedById String?                    @db.Uuid
+  reviewedAt   DateTime?
+  rejectReason String?
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+
+  user     User  @relation("ProfessionalDocuments", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("ProfessionalDocumentReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+}
+
+/// Solicitud de cambio de teléfono de una profesional. El número de WhatsApp
+/// es su identidad de contacto: si lo cambia sola, la cuenta anterior queda
+/// abandonada contaminando la app, así que el cambio pasa por el admin.
+model PhoneChangeRequest {
+  id             String                   @id @default(uuid()) @db.Uuid
+  userId         String                   @db.Uuid
+  /// Número que tenía al pedir el cambio, para poder auditar y revertir.
+  currentPhone   String?
+  requestedPhone String
+  reason         String?
+  status         PhoneChangeRequestStatus @default(PENDING)
+  reviewedById   String?                  @db.Uuid
+  reviewedAt     DateTime?
+  adminNote      String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  user     User  @relation("PhoneChangeRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("PhoneChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+/// Cambio de nombre público de un perfil profesional. El nombre es con lo que
+/// las clientas reconocen el anuncio (y lo que quedó en capturas y contactos),
+/// así que se cambia con revisión del admin, igual que el teléfono.
+model NameChangeRequest {
+  id            String                  @id @default(uuid()) @db.Uuid
+  userId        String                  @db.Uuid
+  /// Nombre que tenía al pedir el cambio, para auditar y revertir.
+  currentName   String?
+  requestedName String
+  reason        String?
+  status        NameChangeRequestStatus @default(PENDING)
+  reviewedById  String?                 @db.Uuid
+  reviewedAt    DateTime?
+  adminNote     String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  user     User  @relation("NameChangeRequests", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("NameChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+/// Verificación facial de un perfil pendiente. El admin crea un enlace único
+/// y firmado, se lo manda por WhatsApp, y en esa página la profesional se
+/// toma unas fotos que el admin compara con las de su galería antes de
+/// publicar el perfil.
+model FaceVerification {
+  id        String                 @id @default(uuid()) @db.Uuid
+  userId    String                 @db.Uuid
+  /// SHA-256 del token del enlace. El token en claro sólo existe en la URL
+  /// que se envía por WhatsApp: si se filtra la base, no sirve para entrar.
+  tokenHash String                 @unique
+  status    FaceVerificationStatus @default(PENDING)
+  expiresAt DateTime
+
+  sentAt      DateTime?
+  /// Número al que se envió el enlace, para saber a dónde fue a parar.
+  sentTo      String?
+  submittedAt DateTime?
+
+  reviewedAt   DateTime?
+  reviewedById String?   @db.Uuid
+  rejectReason String?
+
+  createdById String?  @db.Uuid
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user    User                   @relation("FaceVerifications", fields: [userId], references: [id], onDelete: Cascade)
+  creator User?                  @relation("FaceVerificationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  review  User?                  @relation("FaceVerificationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  shots   FaceVerificationShot[]
+
+  @@index([userId])
+  @@index([status, createdAt])
+}
+
+/// Cada captura de la verificación facial.
+model FaceVerificationShot {
+  id             String   @id @default(uuid()) @db.Uuid
+  verificationId String   @db.Uuid
+  url            String
+  /// FRONT | LEFT | RIGHT — la pose que se le pidió en pantalla.
+  pose           String
+  createdAt      DateTime @default(now())
+
+  verification FaceVerification @relation(fields: [verificationId], references: [id], onDelete: Cascade)
+
+  @@index([verificationId])
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Marketplace — las profesionales venden artículos propios (fotos, videos,
+// ropa, fetiches) a sus clientes dentro de UZEED. Reemplaza la sección de
+// videollamadas. El dinero queda retenido hasta que el cliente confirma la
+// recepción (o pasan `holdDays` días desde el pago) y UZEED cobra comisión.
+// ══════════════════════════════════════════════════════════════════════
+
+enum MarketProductType {
+  PHOTO_SET
+  VIDEO
+  CLOTHING
+  FETISH
+  CUSTOM
+  OTHER
+}
+
+enum MarketDeliveryMethod {
+  DIGITAL   // entrega dentro del ecosistema (automática si autoDeliver)
+  MEET      // se acuerda la entrega con la clienta
+  SHIPPING  // envío a domicilio, tarifa por región
+}
+
+enum MarketOrderStatus {
+  PENDING_PAYMENT  // pedido creado, esperando pasarela / transferencia
+  PAYMENT_REVIEW   // comprobante de transferencia en revisión
+  PAID             // pagado: fondos retenidos en UZEED
+  PREPARING        // la vendedora aceptó y prepara el pedido
+  DELIVERED        // entregado / enviado por la vendedora
+  COMPLETED        // cliente confirmó recepción o se liberó por tiempo
+  CANCELLED
+  REJECTED         // pago rechazado por la pasarela o por admin
+  REFUNDED
+  DISPUTED
+}
+
+enum MarketPayoutStatus {
+  HELD      // retenido hasta confirmación del cliente
+  RELEASED  // disponible para retiro de la vendedora
+  PAID      // transferido por admin
+  CANCELLED
+}
+
+enum MarketLedgerType {
+  SALE
+  COMMISSION
+  RELEASE
+  REFUND
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum MarketWithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+/// Configuración global del marketplace (fila única, id = "default").
+model MarketSettings {
+  id                 String   @id @default("default")
+  isEnabled          Boolean  @default(true)
+  commissionPercent  Float    @default(15)   // comisión UZEED por venta
+  holdDays           Int      @default(4)    // días de retención tras el pago
+  minPriceClp        Int      @default(1000)
+  maxPriceClp        Int      @default(2000000)
+  gatewayEnabled     Boolean  @default(true) // pagar con Flow
+  transferEnabled    Boolean  @default(true) // pagar por transferencia
+  // Datos bancarios de UZEED para las transferencias de los clientes
+  bankName           String?
+  bankAccountType    String?
+  bankAccountNumber  String?
+  bankHolderName     String?
+  bankHolderRut      String?
+  bankEmail          String?
+  transferNote       String?
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+
+/// Tarifa de envío por región, configurable desde el panel admin.
+model MarketShippingRate {
+  id        String   @id @default(uuid()) @db.Uuid
+  region    String   @unique
+  priceClp  Int      @default(0)
+  etaText   String?  // "2 a 4 días hábiles"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders MarketOrder[]
+}
+
+/// Ficha de vendedora dentro del marketplace (una por profesional).
+model MarketSeller {
+  id                String   @id @default(uuid()) @db.Uuid
+  userId            String   @unique @db.Uuid
+  storeName         String?
+  tagline           String?
+  bio               String?
+  region            String?
+  isActive          Boolean  @default(true)
+  isBanned          Boolean  @default(false)
+  acceptsShipping   Boolean  @default(true)
+  acceptsMeet       Boolean  @default(true)
+  autoDeliverDigital Boolean @default(true) // entrega automática al confirmarse el pago
+  // Datos para recibir los pagos liberados
+  bankName          String?
+  bankAccountType   String?
+  bankAccountNumber String?
+  bankHolderName    String?
+  bankHolderRut     String?
+  bankEmail         String?
+  totalSales        Int      @default(0)
+  totalEarnedClp    Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user        User                 @relation("MarketSellerUser", fields: [userId], references: [id], onDelete: Cascade)
+  products    MarketProduct[]
+  withdrawals MarketWithdrawal[]
+
+  @@index([isActive])
+}
+
+model MarketProduct {
+  id              String            @id @default(uuid()) @db.Uuid
+  sellerId        String            @db.Uuid
+  userId          String            @db.Uuid
+  title           String
+  description     String?
+  priceClp        Int
+  type            MarketProductType @default(PHOTO_SET)
+  /// Métodos de entrega aceptados para este artículo.
+  deliveryMethods MarketDeliveryMethod[] @default([])
+  /// Entrega automática del contenido digital al confirmarse el pago.
+  autoDeliver     Boolean           @default(true)
+  stock           Int?              // null = ilimitado (contenido digital)
+  isActive        Boolean           @default(true)
+  isHidden        Boolean           @default(false) // ocultado por admin
+  tags            String[]          @default([])
+  coverUrl        String?           // portada pública (preview)
+  viewCount       Int               @default(0)
+  salesCount      Int               @default(0)
+  ratingAvg       Float?
+  ratingCount     Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  seller  MarketSeller         @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user    User                 @relation("MarketProductsByUser", fields: [userId], references: [id], onDelete: Cascade)
+  media   MarketProductMedia[]
+  assets  MarketProductAsset[]
+  orders  MarketOrder[]
+  reviews MarketReview[]
+
+  @@index([sellerId])
+  @@index([userId])
+  @@index([isActive, createdAt])
+  @@index([type])
+}
+
+/// Previews públicos del artículo (con marca de agua o censurados).
+model MarketProductMedia {
+  id        String    @id @default(uuid()) @db.Uuid
+  productId String    @db.Uuid
+  url       String
+  thumbnailUrl String?
+  type      MediaType @default(IMAGE)
+  pos       Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  product MarketProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+/// Archivos reales que recibe el comprador. Viven en almacenamiento privado
+/// (private://) y solo se sirven con URL firmada a quien pagó.
+model MarketProductAsset {
+  id           String    @id @default(uuid()) @db.Uuid
+  productId    String    @db.Uuid
+  url          String    // private://market-assets/...
+  thumbnailUrl String?
+  type         MediaType @default(IMAGE)
+  sizeBytes    Int       @default(0)
+  pos          Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  product MarketProduct     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  copies  MarketOrderAsset[]
+
+  @@index([productId])
+}
+
+model MarketOrder {
+  id             String               @id @default(uuid()) @db.Uuid
+  code           String               @unique // referencia corta para la clienta
+  buyerId        String               @db.Uuid
+  sellerId       String               @db.Uuid // userId de la profesional
+  productId      String?              @db.Uuid
+  productTitle   String
+  unitPriceClp   Int
+  quantity       Int                  @default(1)
+  itemTotalClp   Int
+  shippingClp    Int                  @default(0)
+  totalClp       Int
+  commissionClp  Int                  @default(0)
+  sellerNetClp   Int                  @default(0)
+  commissionPercent Float             @default(0)
+
+  deliveryMethod MarketDeliveryMethod @default(DIGITAL)
+  shippingRateId String?              @db.Uuid
+  shippingRegion String?
+  shipAddress    String?
+  shipCity       String?
+  shipName       String?
+  shipPhone      String?
+  shipNotes      String?
+  trackingCode   String?
+
+  status         MarketOrderStatus    @default(PENDING_PAYMENT)
+  paymentMethod  PaymentMethod        @default(FLOW)
+  paymentIntentId String?             @db.Uuid
+  transferReceiptUrl String?
+  transferNote   String?
+  paidAt         DateTime?
+  autoReleaseAt  DateTime?
+  deliveredAt    DateTime?
+  buyerConfirmedAt DateTime?
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  /// Reclamo de la compradora: congela la liberación hasta que administración
+  /// decide. Mientras `status` sea DISPUTED el barrido automático no lo toca.
+  disputedAt        DateTime?
+  disputeReason     String?
+  disputeResolution String?
+  /// Aviso previo a la liberación automática, para que la clienta alcance a
+  /// reclamar si el pedido nunca llegó.
+  releaseWarnedAt   DateTime?
+  payoutStatus   MarketPayoutStatus   @default(HELD)
+  payoutPaidAt   DateTime?
+  autoDelivered  Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  buyer        User                @relation("MarketPurchases", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller       User                @relation("MarketSales", fields: [sellerId], references: [id], onDelete: Cascade)
+  product      MarketProduct?      @relation(fields: [productId], references: [id], onDelete: SetNull)
+  shippingRate MarketShippingRate? @relation(fields: [shippingRateId], references: [id], onDelete: SetNull)
+  assets       MarketOrderAsset[]
+  events       MarketOrderEvent[]
+  messages     MarketOrderMessage[]
+  ledger       MarketLedgerEntry[]
+  review       MarketReview?
+
+  @@index([buyerId, createdAt])
+  @@index([sellerId, createdAt])
+  @@index([status])
+  @@index([autoReleaseAt])
+}
+
+/// Copia del archivo entregado en un pedido concreto: si la vendedora cambia
+/// el producto después, la compradora conserva lo que compró.
+model MarketOrderAsset {
+  id           String    @id @default(uuid()) @db.Uuid
+  orderId      String    @db.Uuid
+  assetId      String?   @db.Uuid
+  url          String
+  thumbnailUrl String?
+  type         MediaType @default(IMAGE)
+  viewedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  order MarketOrder         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  asset MarketProductAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+}
+
+/// Bitácora del pedido: qué pasó, cuándo y quién lo hizo. Visible para admin.
+model MarketOrderEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  actorId   String?  @db.Uuid
+  type      String   // ORDER_CREATED, PAYMENT_CONFIRMED, AUTO_DELIVERED, ...
+  note      String?
+  data      Json?
+  createdAt DateTime @default(now())
+
+  order MarketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+/// Chat del pedido entre compradora y vendedora (admin puede leerlo).
+model MarketOrderMessage {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @db.Uuid
+  senderId  String   @db.Uuid
+  body      String
+  imageUrl  String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  order  MarketOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender User        @relation("MarketOrderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+}
+
+/// Movimientos de dinero del marketplace (en CLP).
+model MarketLedgerEntry {
+  id           String           @id @default(uuid()) @db.Uuid
+  userId       String           @db.Uuid
+  orderId      String?          @db.Uuid
+  type         MarketLedgerType
+  amountClp    Int              // positivo entra, negativo sale
+  description  String?
+  createdAt    DateTime         @default(now())
+
+  user  User         @relation("MarketLedger", fields: [userId], references: [id], onDelete: Cascade)
+  order MarketOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([orderId])
+}
+
+model MarketWithdrawal {
+  id          String                 @id @default(uuid()) @db.Uuid
+  sellerId    String                 @db.Uuid
+  userId      String                 @db.Uuid
+  amountClp   Int
+  status      MarketWithdrawalStatus @default(PENDING)
+  bankSnapshot Json?
+  adminNote   String?
+  reviewedBy  String?                @db.Uuid
+  reviewedAt  DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  seller MarketSeller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  user   User         @relation("MarketWithdrawals", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model MarketReview {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @unique @db.Uuid
+  productId String   @db.Uuid
+  buyerId   String   @db.Uuid
+  rating    Int      @default(5)
+  comment   String?
+  createdAt DateTime @default(now())
+
+  order   MarketOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product MarketProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer   User          @relation("MarketReviews", fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([productId, createdAt])
+}
