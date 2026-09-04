@@ -1,9 +1,8 @@
-FROM node:20-bullseye-slim AS base
+FROM node:20-bookworm-slim AS base
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
- && echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
  && apt-get update -y \
  && apt-get install -y --no-install-recommends openssl ffmpeg \
  && rm -rf /var/lib/apt/lists/*
@@ -39,11 +38,10 @@ RUN pnpm --filter @uzeed/shared build
 RUN pnpm --filter @uzeed/api build
 
 # Runtime
-FROM node:20-bullseye-slim AS runtime
+FROM node:20-bookworm-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
- && echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
+RUN echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
  && apt-get update -y \
  && apt-get install -y --no-install-recommends openssl ffmpeg \
  && rm -rf /var/lib/apt/lists/*
