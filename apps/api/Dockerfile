@@ -2,7 +2,11 @@ FROM node:20-bullseye-slim AS base
 WORKDIR /app
 ENV PNPM_HOME=/pnpm
 ENV PATH=$PNPM_HOME:$PATH
-RUN apt-get update -y && apt-get install -y openssl ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
+ && echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
+ && apt-get update -y \
+ && apt-get install -y --no-install-recommends openssl ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 
 # Install deps (workspace-aware)
@@ -38,7 +42,11 @@ RUN pnpm --filter @uzeed/api build
 FROM node:20-bullseye-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
-RUN apt-get update -y && apt-get install -y openssl ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN echo 'Acquire::ForceIPv4 "true";' > /etc/apt/apt.conf.d/99force-ipv4 \
+ && echo 'Acquire::Retries "3";' > /etc/apt/apt.conf.d/99retries \
+ && apt-get update -y \
+ && apt-get install -y --no-install-recommends openssl ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma/node_modules ./prisma/node_modules
