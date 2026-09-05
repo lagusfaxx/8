@@ -21,23 +21,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       openGraph: {
         title: `${title} | UZEED`,
         description,
-        url: `https://uzeed.cl/escorts/${city.slug}`,
+        url: `https://uzeed.mx/escorts/${city.slug}`,
         type: "website",
-        images: [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: `UZEED Escorts ${city.name}` }],
+        images: [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: `UZEED Escorts ${city.name}` }],
       },
       twitter: {
         card: "summary_large_image",
         title: `${title} | UZEED`,
         description,
-        images: ["https://uzeed.cl/brand/isotipo-new.png"],
+        images: ["https://uzeed.mx/brand/isotipo-new.png"],
       },
     };
   }
 
   // ── Landing por atributo/servicio (tetona, anal, colombiana …) ──
   const label = tag.charAt(0).toUpperCase() + tag.slice(1).replace(/-/g, " ");
-  const title = `Escorts ${label} en Chile - Verificadas Hoy`;
-  const description = `Escorts y putas ${label.toLowerCase()} verificadas en Santiago, Viña del Mar y todo Chile. Fotos reales, contacto directo y disponibilidad hoy en UZEED.`;
+  const title = `Escorts ${label} en México - Verificadas Hoy`;
+  const description = `Escorts y putas ${label.toLowerCase()} verificadas en CDMX, Guadalajara, Monterrey y todo México. Fotos reales, contacto directo y disponibilidad hoy en UZEED.`;
   return {
     title,
     description,
@@ -45,15 +45,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${title} | UZEED`,
       description,
-      url: `https://uzeed.cl/escorts/${tag}`,
+      url: `https://uzeed.mx/escorts/${tag}`,
       type: "website",
-      images: [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: `UZEED Escorts ${label}` }],
+      images: [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: `UZEED Escorts ${label}` }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${title} | UZEED`,
       description,
-      images: ["https://uzeed.cl/brand/isotipo-new.png"],
+      images: ["https://uzeed.mx/brand/isotipo-new.png"],
     },
   };
 }
@@ -88,8 +88,8 @@ export default async function EscortsTagPage({ params }: Props) {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.cl" },
-              { "@type": "ListItem", position: 2, name: "Escorts", item: "https://uzeed.cl/escorts" },
+              { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.mx" },
+              { "@type": "ListItem", position: 2, name: "Escorts", item: "https://uzeed.mx/escorts" },
               { "@type": "ListItem", position: 3, name: `Escorts en ${city.name}` },
             ],
           }) }}
@@ -106,7 +106,7 @@ export default async function EscortsTagPage({ params }: Props) {
           </p>
           <p>
             Todos los perfiles publicados en {city.name} son verificados. Explora
-            también escorts en otras ciudades de Chile como Santiago, Viña del Mar,
+            también escorts en otras ciudades de México como Ciudad de México, Guadalajara,
             Valparaíso y Concepción desde UZEED.
           </p>
         </section>
@@ -159,8 +159,8 @@ export default async function EscortsTagPage({ params }: Props) {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.cl" },
-            { "@type": "ListItem", position: 2, name: "Escorts", item: "https://uzeed.cl/escorts" },
+            { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.mx" },
+            { "@type": "ListItem", position: 2, name: "Escorts", item: "https://uzeed.mx/escorts" },
             { "@type": "ListItem", position: 3, name: `Escorts ${label}` },
           ],
         }) }}
@@ -168,11 +168,11 @@ export default async function EscortsTagPage({ params }: Props) {
       {/* Server-rendered SEO text for long-tail indexing */}
       <section className="max-w-4xl mx-auto px-4 pb-12 pt-8 text-white/60 text-sm leading-relaxed">
         <h1 className="text-xl font-bold text-white/80 mb-3">
-          Escorts y Acompañantes {label} en Chile
+          Escorts y Acompañantes {label} en México
         </h1>
         <p className="mb-4">
-          Directorio de escorts y acompañantes {readableTag} verificadas en Chile. Encuentra
-          perfiles con fotos reales en Santiago, Las Condes, Providencia, Viña del Mar
+          Directorio de escorts y acompañantes {readableTag} verificadas en México. Encuentra
+          perfiles con fotos reales en Ciudad de México, Polanco, Guadalajara, Monterrey
           y más de 20 ciudades. Contacto directo por WhatsApp y disponibilidad hoy.
         </p>
         <p>

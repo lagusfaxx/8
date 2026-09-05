@@ -99,7 +99,7 @@ export default function SubscribersPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Ingresos recurrentes mensuales (MRR)</p>
-            <p className="mt-1 text-3xl font-extrabold text-white">${mrr.toLocaleString("es-CL")} <span className="text-sm font-semibold text-white/40">CLP</span></p>
+            <p className="mt-1 text-3xl font-extrabold text-white">${mrr.toLocaleString("es-MX")} <span className="text-sm font-semibold text-white/40">MXN</span></p>
             <p className="mt-1 text-xs text-white/40">Suma de las tarifas de tus suscriptores activos con PAC.</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#00aff0]/15">
@@ -168,13 +168,13 @@ export default function SubscribersPage() {
                       )}
                     </div>
                     <p className="text-[11px] text-white/40 truncate">
-                      @{sub.user.username} · desde {new Date(sub.activatedAt).toLocaleDateString("es-CL")}
+                      @{sub.user.username} · desde {new Date(sub.activatedAt).toLocaleDateString("es-MX")}
                       {sub.cardLast4 ? ` · •• ${sub.cardLast4}` : ""}
                     </p>
                   </div>
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-1">
-                  <span className="text-sm font-extrabold text-white">${sub.priceCLP.toLocaleString("es-CL")}</span>
+                  <span className="text-sm font-extrabold text-white">${sub.priceCLP.toLocaleString("es-MX")}</span>
                   {isCancelling ? (
                     <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/25 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-400">
                       <XCircle className="h-2.5 w-2.5" /> Cancelando

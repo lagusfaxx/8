@@ -24,7 +24,7 @@ const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 20;
 
 const phoneRegex =
-  /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
+  /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
 
 const MONTHS = [
   "Enero",
@@ -131,7 +131,7 @@ export default function ProfessionalRegisterForm({
         return `El nombre público no puede superar los ${DISPLAY_NAME_MAX_LENGTH} caracteres.`;
       if (!email.trim()) return "Ingresa tu email.";
       if (!phoneRegex.test(phone.trim()))
-        return "Ingresa un número válido con código de país (+56, +57, +58 o +51).";
+        return "Ingresa un número válido con código de país (+52, +57, +58 o +51).";
       if (!skipPassword && password.length < 8)
         return "La contraseña debe tener al menos 8 caracteres.";
     }
@@ -312,7 +312,7 @@ export default function ProfessionalRegisterForm({
               className="input"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="+56 9 1234 5678 / +57 3..."
+              placeholder="+52 55 1234 5678 / +57 3..."
               required
             />
           </div>

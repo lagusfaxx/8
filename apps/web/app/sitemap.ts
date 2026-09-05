@@ -29,8 +29,8 @@ type EstablishmentItem = {
   id?: string | null;
 };
 
-const DEFAULT_WEB_URL = "https://uzeed.cl";
-const DEFAULT_API_URL = "https://api.uzeed.cl";
+const DEFAULT_WEB_URL = "https://uzeed.mx";
+const DEFAULT_API_URL = "https://api.uzeed.mx";
 
 function normalizeBaseUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
@@ -115,7 +115,7 @@ const ESCORT_TAGS = [
   // Físico
   "tetona", "culona", "delgada", "fitness", "gordita", "flaca", "curvy",
   // Apariencia
-  "rubia", "morena", "pelirroja", "trigueña", "latina", "colombiana", "venezolana",
+  "rubia", "morena", "morenita", "pelirroja", "latina", "mexicana", "colombiana", "venezolana",
   // Personalidad
   "sumisa", "dominante", "caliente", "cariñosa", "natural", "discreta",
   // Estilo

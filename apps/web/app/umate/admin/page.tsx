@@ -291,11 +291,11 @@ export default function UmateAdminPage() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 text-center">
-              <p className="text-2xl font-extrabold text-emerald-300">${dashboard.totalRevenue.toLocaleString("es-CL")}</p>
+              <p className="text-2xl font-extrabold text-emerald-300">${dashboard.totalRevenue.toLocaleString("es-MX")}</p>
               <p className="text-[10px] text-white/40 mt-1">Ingresos brutos</p>
             </div>
             <div className="rounded-2xl border border-[#00aff0]/15 bg-[#00aff0]/[0.04] p-4 text-center">
-              <p className="text-2xl font-extrabold text-[#00aff0]">${(dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-CL")}</p>
+              <p className="text-2xl font-extrabold text-[#00aff0]">${(dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-MX")}</p>
               <p className="text-[10px] text-white/40 mt-1">Ganancia neta plataforma</p>
             </div>
             <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] p-4 text-center">
@@ -314,19 +314,19 @@ export default function UmateAdminPage() {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 text-sm">
               <div>
                 <p className="text-white/40 text-xs">Comisiones cobradas</p>
-                <p className="font-bold text-white">${dashboard.totalCommissions.toLocaleString("es-CL")}</p>
+                <p className="font-bold text-white">${dashboard.totalCommissions.toLocaleString("es-MX")}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">IVA retenido</p>
-                <p className="font-bold text-amber-300">${dashboard.totalIva.toLocaleString("es-CL")}</p>
+                <p className="font-bold text-amber-300">${dashboard.totalIva.toLocaleString("es-MX")}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">Neto plataforma</p>
-                <p className="font-bold text-[#00aff0]">${(dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-CL")}</p>
+                <p className="font-bold text-[#00aff0]">${(dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-MX")}</p>
               </div>
               <div>
                 <p className="text-white/40 text-xs">Pagado a creadoras</p>
-                <p className="font-bold text-emerald-300">${(dashboard.totalRevenue - dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-CL")}</p>
+                <p className="font-bold text-emerald-300">${(dashboard.totalRevenue - dashboard.totalCommissions - dashboard.totalIva).toLocaleString("es-MX")}</p>
               </div>
             </div>
           </div>
@@ -437,9 +437,9 @@ export default function UmateAdminPage() {
                 <div className="mt-3 flex items-center gap-4 text-[10px] text-white/40 border-t border-white/[0.04] pt-2.5">
                   <span>{c.subscriberCount} suscriptores</span>
                   <span>{c.totalPosts} posts</span>
-                  <span className="text-emerald-400/60">${c.totalEarned.toLocaleString("es-CL")} ganado</span>
-                  <span>Balance: ${(c.availableBalance || 0).toLocaleString("es-CL")}</span>
-                  <span className="ml-auto">{new Date(c.createdAt).toLocaleDateString("es-CL")}</span>
+                  <span className="text-emerald-400/60">${c.totalEarned.toLocaleString("es-MX")} ganado</span>
+                  <span>Balance: ${(c.availableBalance || 0).toLocaleString("es-MX")}</span>
+                  <span className="ml-auto">{new Date(c.createdAt).toLocaleDateString("es-MX")}</span>
                 </div>
               </div>
             ))}
@@ -479,7 +479,7 @@ export default function UmateAdminPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-base font-extrabold">${w.amount.toLocaleString("es-CL")} CLP</p>
+                      <p className="text-base font-extrabold">${w.amount.toLocaleString("es-MX")} MXN</p>
                       <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
                         w.status === "APPROVED" ? "bg-emerald-500/15 text-emerald-300" :
                         w.status === "PENDING" ? "bg-amber-500/15 text-amber-300" :
@@ -492,7 +492,7 @@ export default function UmateAdminPage() {
                       <p><span className="text-white/45">Banco:</span> {w.bankName} — Cta. {w.accountType}</p>
                       <p><span className="text-white/45">Nro:</span> {w.accountNumber}</p>
                       <p><span className="text-white/45">Titular:</span> {w.holderName} · RUT: {w.holderRut}</p>
-                      <p><span className="text-white/45">Fecha:</span> {new Date(w.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })}</p>
+                      <p><span className="text-white/45">Fecha:</span> {new Date(w.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })}</p>
                     </div>
                   </div>
 
@@ -599,11 +599,11 @@ export default function UmateAdminPage() {
                         {entry.creator?.displayName} (@{entry.creator?.user?.username})
                       </p>
                     </div>
-                    <span className="text-right text-white/50 font-medium tabular-nums">${entry.grossAmount.toLocaleString("es-CL")}</span>
-                    <span className="text-right text-amber-300/50 tabular-nums">${(entry.ivaAmount || 0).toLocaleString("es-CL")}</span>
-                    <span className="text-right text-red-300/50 tabular-nums">${(entry.platformFee || 0).toLocaleString("es-CL")}</span>
-                    <span className="text-right text-emerald-300 font-medium tabular-nums">${entry.creatorPayout.toLocaleString("es-CL")}</span>
-                    <span className="text-right text-white/45 tabular-nums">{new Date(entry.createdAt).toLocaleDateString("es-CL")}</span>
+                    <span className="text-right text-white/50 font-medium tabular-nums">${entry.grossAmount.toLocaleString("es-MX")}</span>
+                    <span className="text-right text-amber-300/50 tabular-nums">${(entry.ivaAmount || 0).toLocaleString("es-MX")}</span>
+                    <span className="text-right text-red-300/50 tabular-nums">${(entry.platformFee || 0).toLocaleString("es-MX")}</span>
+                    <span className="text-right text-emerald-300 font-medium tabular-nums">${entry.creatorPayout.toLocaleString("es-MX")}</span>
+                    <span className="text-right text-white/45 tabular-nums">{new Date(entry.createdAt).toLocaleDateString("es-MX")}</span>
                   </div>
                 ))}
               </div>
@@ -646,7 +646,7 @@ export default function UmateAdminPage() {
                 onChange={(e) => setIvaPct(Math.min(100, parseInt(e.target.value) || 0))}
                 className={inputClass}
               />
-              <p className="mt-1 text-[10px] text-white/45">IVA incluido en la tarifa que cobra cada creadora (19% en Chile)</p>
+              <p className="mt-1 text-[10px] text-white/45">IVA incluido en la tarifa que cobra cada creadora (16% en México)</p>
             </div>
 
             {/* Preview calculation — example with creator tariff $9.990 */}
@@ -659,28 +659,28 @@ export default function UmateAdminPage() {
               const creatorReceives = netAfterIva - commission;
               return (
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-4 space-y-3">
-                  <p className="text-[10px] font-bold text-white/40">Ejemplo: Tarifa de creadora $9.990 CLP / mes</p>
+                  <p className="text-[10px] font-bold text-white/40">Ejemplo: Tarifa de creadora $9.990 MXN / mes</p>
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between">
                       <span className="text-white/50">Cliente paga</span>
-                      <span className="font-bold">${grossPerSlot.toLocaleString("es-CL")}</span>
+                      <span className="font-bold">${grossPerSlot.toLocaleString("es-MX")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-amber-400/70">IVA incluido ({ivaPct}%)</span>
-                      <span className="font-bold text-amber-300/60">-${iva.toLocaleString("es-CL")}</span>
+                      <span className="font-bold text-amber-300/60">-${iva.toLocaleString("es-MX")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-white/50">Neto sin IVA</span>
-                      <span className="font-bold">${netAfterIva.toLocaleString("es-CL")}</span>
+                      <span className="font-bold">${netAfterIva.toLocaleString("es-MX")}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-red-400/70">Comisión ({platformCommPct}%)</span>
-                      <span className="font-bold text-red-300/60">-${commission.toLocaleString("es-CL")}</span>
+                      <span className="font-bold text-red-300/60">-${commission.toLocaleString("es-MX")}</span>
                     </div>
                     <div className="h-px bg-white/[0.06]" />
                     <div className="flex justify-between">
                       <span className="text-emerald-400/70">Creadora recibe</span>
-                      <span className="font-bold text-emerald-300">${creatorReceives.toLocaleString("es-CL")}</span>
+                      <span className="font-bold text-emerald-300">${creatorReceives.toLocaleString("es-MX")}</span>
                     </div>
                   </div>
                   <div className="h-px bg-white/[0.06]" />
@@ -688,7 +688,7 @@ export default function UmateAdminPage() {
                     <p className="text-[10px] font-bold text-white/40">Ganancia plataforma</p>
                     <div className="flex justify-between">
                       <span className="text-[#00aff0]/70">Comisión neta</span>
-                      <span className="font-bold text-[#00aff0]">${commission.toLocaleString("es-CL")}</span>
+                      <span className="font-bold text-[#00aff0]">${commission.toLocaleString("es-MX")}</span>
                     </div>
                   </div>
                 </div>
@@ -735,7 +735,7 @@ export default function UmateAdminPage() {
                   {typeof demoSeed.alive === "number" && demoSeed.alive !== demoSeed.count
                     ? ` · ${demoSeed.alive} aún vivas en DB`
                     : ""}
-                  {demoSeed.createdAt ? ` · ${new Date(demoSeed.createdAt).toLocaleString("es-CL")}` : ""}
+                  {demoSeed.createdAt ? ` · ${new Date(demoSeed.createdAt).toLocaleString("es-MX")}` : ""}
                 </p>
               </div>
             ) : (

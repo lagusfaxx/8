@@ -106,8 +106,8 @@ export default function PagoPage() {
           <div>
             <p className="text-[11px] font-bold uppercase tracking-widest text-fuchsia-400/70 mb-1">Plan Profesional</p>
             <h1 className="text-2xl font-bold tracking-tight">
-              ${price.toLocaleString("es-CL")}
-              <span className="text-base font-normal text-white/40 ml-1">CLP/mes</span>
+              ${price.toLocaleString("es-MX")}
+              <span className="text-base font-normal text-white/40 ml-1">MXN/mes</span>
             </h1>
             {isActive && sub?.daysRemaining ? (
               <p className="mt-1 text-xs text-emerald-400 flex items-center gap-1">
@@ -234,7 +234,7 @@ export default function PagoPage() {
                 {pacBusy ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Redirigiendo a Flow...</>
                 ) : (
-                  <><CreditCard className="h-4 w-4" /> Registrar tarjeta y activar PAC — ${price.toLocaleString("es-CL")}/mes</>
+                  <><CreditCard className="h-4 w-4" /> Registrar tarjeta y activar PAC — ${price.toLocaleString("es-MX")}/mes</>
                 )}
               </button>
             </div>
@@ -281,7 +281,7 @@ export default function PagoPage() {
                 {flowBusy ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Redirigiendo a Flow...</>
                 ) : (
-                  <><CreditCard className="h-4 w-4" /> Pagar ${price.toLocaleString("es-CL")} con Flow</>
+                  <><CreditCard className="h-4 w-4" /> Pagar ${price.toLocaleString("es-MX")} con Flow</>
                 )}
               </button>
             </div>

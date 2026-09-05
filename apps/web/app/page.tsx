@@ -4,7 +4,7 @@ import HomeClient from "./HomeClient";
 import { cleanProfileHref } from "../lib/profileUrl";
 import { CITY_LANDINGS } from "../lib/cities";
 
-const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.cl";
+const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.mx";
 
 function apiBase(): string {
   return DEFAULT_API.replace(/\/+$/, "");
@@ -34,30 +34,30 @@ async function fetchFeaturedProfiles(): Promise<ProfileLink[]> {
 export const metadata: Metadata = {
   title: "UZEED: Escorts y experiencias únicas para adultos",
   description:
-    "Encuentra las mejores escorts, acompañantes y profesionales en Santiago, Las Condes, Providencia y Viña del Mar. Perfiles verificados con fotos reales, sexo incógnito y disponibilidad hoy en UZEED.",
+    "Encuentra las mejores escorts, acompañantes y profesionales en Ciudad de México, Polanco, Guadalajara y Monterrey. Perfiles verificados con fotos reales, sexo incógnito y disponibilidad hoy en UZEED.",
   keywords: [
-    "escorts chile", "acompañantes chile", "escorts santiago", "acompañantes santiago",
+    "escorts mexico", "acompañantes mexico", "escorts cdmx", "acompañantes cdmx",
     "escorts las condes", "escorts providencia", "escorts viña del mar",
     "acompañantes verificadas", "escorts verificadas",
     "escorts colombianas santiago", "escorts venezolanas santiago",
-    "masajistas chile", "moteles chile", "sexshop chile",
+    "masajistas mexico", "moteles mexico", "sexshop mexico",
     "escorts cerca de mi", "acompañantes cerca de mi",
   ],
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
-    locale: "es_CL",
-    url: "https://uzeed.cl",
+    locale: "es_MX",
+    url: "https://uzeed.mx",
     siteName: "UZEED: Escorts y experiencias únicas para adultos",
     title: "UZEED: Escorts y experiencias únicas para adultos",
     description:
-      "Encuentra las mejores escorts, acompañantes y profesionales en Santiago, Las Condes y Viña del Mar. Perfiles verificados y disponibilidad hoy.",
+      "Encuentra las mejores escorts, acompañantes y profesionales en Ciudad de México, Polanco y Guadalajara. Perfiles verificados y disponibilidad hoy.",
     images: [
       {
-        url: "https://uzeed.cl/brand/isotipo-new.png",
+        url: "https://uzeed.mx/brand/isotipo-new.png",
         width: 720,
         height: 720,
-        alt: "UZEED - Escorts y Profesionales en Chile",
+        alt: "UZEED - Escorts y Profesionales en México",
       },
     ],
   },
@@ -65,8 +65,8 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "UZEED: Escorts y experiencias únicas para adultos",
     description:
-      "Encuentra las mejores escorts, acompañantes y profesionales en Santiago y todo Chile. Perfiles verificados y disponibilidad hoy.",
-    images: ["https://uzeed.cl/brand/isotipo-new.png"],
+      "Encuentra las mejores escorts, acompañantes y profesionales en Ciudad de México y todo México. Perfiles verificados y disponibilidad hoy.",
+    images: ["https://uzeed.mx/brand/isotipo-new.png"],
   },
 };
 
@@ -79,7 +79,7 @@ const homeFaqJsonLd = {
       name: "¿Cómo veo quién está cerca de mí?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "El mapa del inicio y la página Cerca piden tu ubicación y muestran los perfiles dentro del radio que elijas, entre 1 y 50 km. Si prefieres no dar tu GPS, puedes elegir la comuna a mano y funciona igual.",
+        text: "El mapa del inicio y la página Cerca piden tu ubicación y muestran los perfiles dentro del radio que elijas, entre 1 y 50 km. Si prefieres no dar tu GPS, puedes elegir la ciudad a mano y funciona igual.",
       },
     },
     {
@@ -113,7 +113,7 @@ const homeBreadcrumbJsonLd = {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.cl" },
+    { "@type": "ListItem", position: 1, name: "Inicio", item: "https://uzeed.mx" },
   ],
 };
 
@@ -132,8 +132,8 @@ export default async function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeBreadcrumbJsonLd) }}
       />
-      {/* Enlaces a las landings de comuna. Es el bloque con más peso SEO del
-          home: reparte autoridad a las 25 páginas /escorts/{comuna}, que son
+      {/* Enlaces a las landings de ciudad. Es el bloque con más peso SEO del
+          home: reparte autoridad a las páginas /escorts/{ciudad}, que son
           las que compiten por las búsquedas geolocalizadas. */}
       <nav className="mx-auto max-w-4xl px-4 pt-10" aria-label="Escorts por ciudad">
         <h2 className="mb-3 text-base font-semibold text-white/75">Escorts por ciudad</h2>
@@ -156,7 +156,7 @@ export default async function HomePage() {
           Cómo funciona UZEED
         </h2>
         <p className="mb-4">
-          UZEED reúne escorts, acompañantes y masajistas de Chile en un solo directorio.
+          UZEED reúne escorts, acompañantes y masajistas de México en un solo directorio.
           Cada perfil se verifica antes de publicarse, muestra sus propias fotos y se
           contacta directo por WhatsApp o por el chat interno. El mapa de cercanía
           ordena los perfiles por distancia real, así que puedes ver en segundos quién
@@ -165,7 +165,7 @@ export default async function HomePage() {
         <p className="mb-4">
           Además de escorts y acompañantes hay masajistas (tántrico, nuru y descontracturante),
           moteles con tarifas al día, hospedajes discretos y sex shops con despacho a
-          todo el país. Todo se filtra por comuna, servicio, disponibilidad y rango de precio.
+          todo el país. Todo se filtra por ciudad, servicio, disponibilidad y rango de precio.
         </p>
 
         <h2 className="mb-3 mt-8 text-base font-semibold text-white/75">Preguntas frecuentes</h2>
@@ -176,7 +176,7 @@ export default async function HomePage() {
           <p className="mt-1 pl-4 text-white/50">
             El mapa del inicio y la página Cerca piden tu ubicación y muestran los perfiles
             dentro del radio que elijas, entre 1 y 50 km. Si prefieres no dar tu GPS, puedes
-            elegir la comuna a mano y funciona igual.
+            elegir la ciudad a mano y funciona igual.
           </p>
         </details>
         <details className="group mb-3">

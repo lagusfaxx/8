@@ -7,14 +7,14 @@ const footerLinks = {
   "Explorar": [
     { label: "Escorts Premium", href: "/escorts" },
     { label: "Masajistas Eróticas", href: "/masajistas" },
-    { label: "Escorts Trans Chile", href: "/escorts?profileTags=trans" },
+    { label: "Escorts Trans México", href: "/escorts?profileTags=trans" },
     { label: "Moteles", href: "/moteles" },
     { label: "Sex Shop Online", href: "/sexshop" },
     { label: "Marketplace", href: "/marketplace" },
   ],
   "Ciudades": [
-    { label: "Escorts en Santiago", href: "/escorts/santiago" },
-    { label: "Escorts en Viña del Mar", href: "/escorts/vina-del-mar" },
+    { label: "Escorts en CDMX", href: "/escorts/ciudad-de-mexico" },
+    { label: "Escorts en Guadalajara", href: "/escorts/guadalajara" },
     { label: "Escorts en Valparaíso", href: "/escorts/valparaiso" },
     { label: "Escorts en Concepción", href: "/escorts/concepcion" },
     { label: "Escorts en Antofagasta", href: "/escorts/antofagasta" },
@@ -64,7 +64,7 @@ export default function Footer() {
             <Image src="/brand/isotipo-new.png" alt="UZEED" width={40} height={40} className="h-10 w-10 object-contain" loading="lazy" />
             <div>
               <div className="text-lg font-semibold text-white/80">Uzeed</div>
-              <div className="text-[11px] text-white/30">Plataforma #1 de experiencias en Chile</div>
+              <div className="text-[11px] text-white/30">Plataforma #1 de experiencias en México</div>
             </div>
           </div>
 
@@ -103,7 +103,7 @@ export default function Footer() {
 
       <div className="w-full border-t border-white/5 mt-10 py-6 text-center">
         <p className="text-[10px] text-gray-700 tracking-widest uppercase leading-relaxed px-4 max-w-6xl mx-auto">
-          UZEED es la plataforma líder de escorts y acompañantes verificadas en Chile. Perfiles con fotos reales y contacto directo en Santiago, Viña del Mar, Concepción y todo el país. Masajistas eróticas, moteles y sex shops. Solo mayores de 18 años.
+          UZEED es la plataforma líder de escorts y acompañantes verificadas en México. Perfiles con fotos reales y contacto directo en Ciudad de México, Guadalajara, Monterrey y todo el país. Masajistas eróticas, moteles y sex shops. Solo mayores de 18 años.
         </p>
       </div>
     </footer>

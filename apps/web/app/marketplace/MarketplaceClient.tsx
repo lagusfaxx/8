@@ -196,7 +196,7 @@ export default function MarketplaceClient() {
           <span aria-hidden>·</span>
           <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> Fotos y videos al instante</span>
           <span aria-hidden>·</span>
-          <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> Envíos a todo Chile</span>
+          <span className="flex items-center gap-1"><Truck className="h-3 w-3" /> Envíos a toda la República</span>
         </p>
       </section>
 

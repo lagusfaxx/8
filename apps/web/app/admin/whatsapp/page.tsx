@@ -33,7 +33,7 @@ type WaStatus = {
 function humanError(error?: string): string {
   if (!error) return "error desconocido";
   if (error === "NUMERO_SIN_WHATSAPP") return "ese número no tiene WhatsApp (revisa que esté bien escrito)";
-  if (error === "INVALID_PHONE") return "número inválido — usa formato +56 9 XXXX XXXX";
+  if (error === "INVALID_PHONE") return "número inválido — usa formato +52 55 XXXX XXXX";
   if (error.startsWith("NOT_CONNECTED")) return "el bot no está conectado — escanea el QR primero";
   if (error.startsWith("TIMEOUT")) return error;
   if (error === "Failed to fetch") return "se perdió la conexión con el servidor (¿se está reiniciando?). Espera unos segundos y reintenta";
@@ -236,7 +236,7 @@ export default function AdminWhatsAppPage() {
             <input
               value={testPhone}
               onChange={(e) => setTestPhone(e.target.value)}
-              placeholder="+56 9 1234 5678"
+              placeholder="+52 55 1234 5678"
               className="w-full bg-transparent text-sm outline-none placeholder:text-white/25"
             />
           </label>

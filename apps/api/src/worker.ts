@@ -385,7 +385,7 @@ async function tickSyncUmatePacSubscriptions() {
               ivaAmount,
               creatorPayout,
               netAmount: creatorPayout,
-              description: `Renovación PAC (sync worker) — $${gross.toLocaleString("es-CL")} CLP`,
+              description: `Renovación PAC (sync worker) — $${gross.toLocaleString("es-MX")} CLP`,
               referenceId: sub.id,
               referenceType: "direct_subscription",
             },

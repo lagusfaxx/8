@@ -365,7 +365,7 @@ export default function AdminVerificationPage() {
                         {p.phone && <span className="flex items-center gap-0.5"><Phone className="h-2.5 w-2.5" /> {p.phone}</span>}
                         {p.city && <span className="flex items-center gap-0.5"><MapPin className="h-2.5 w-2.5" /> {p.city}</span>}
                         <span className="flex items-center gap-0.5"><Mail className="h-2.5 w-2.5" /> {p.email}</span>
-                        <span>{new Date(p.createdAt).toLocaleDateString("es-CL")}</span>
+                        <span>{new Date(p.createdAt).toLocaleDateString("es-MX")}</span>
                       </div>
                     </div>
 
@@ -588,9 +588,9 @@ export default function AdminVerificationPage() {
                         @{item.user.username}
                         {item.user.city ? ` · ${item.user.city}` : ""}
                         {item.submittedAt
-                          ? ` · envió ${new Date(item.submittedAt).toLocaleDateString("es-CL")}`
+                          ? ` · envió ${new Date(item.submittedAt).toLocaleDateString("es-MX")}`
                           : item.sentAt
-                            ? ` · enlace enviado ${new Date(item.sentAt).toLocaleDateString("es-CL")}`
+                            ? ` · enlace enviado ${new Date(item.sentAt).toLocaleDateString("es-MX")}`
                             : ""}
                       </p>
                     </div>
@@ -607,7 +607,7 @@ export default function AdminVerificationPage() {
                   {item.status === "PENDING" && (
                     <p className="mt-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-3 py-2 text-[11px] text-amber-200">
                       Enlace enviado{item.sentTo ? ` al +${item.sentTo}` : ""}, todavía sin fotos.
-                      Vence el {new Date(item.expiresAt).toLocaleDateString("es-CL")}.
+                      Vence el {new Date(item.expiresAt).toLocaleDateString("es-MX")}.
                     </p>
                   )}
 

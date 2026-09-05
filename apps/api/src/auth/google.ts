@@ -267,14 +267,14 @@ function addDays(base: Date, days: number): Date {
 }
 
 const phoneRegex =
-  /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
+  /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
 
 const professionalCompleteSchema = z.object({
   profileType: z.literal("PROFESSIONAL"),
   displayName: z.string().min(2).max(50),
   phone: z
     .string()
-    .regex(phoneRegex, "Ingresa un número válido con código de país (+56, +57, +58 o +51)."),
+    .regex(phoneRegex, "Ingresa un número válido con código de país (+52, +57, +58 o +51)."),
   gender: Genders,
   preferenceGender: PreferenceGenders.optional(),
   birthdate: z.string().min(1, "required"),

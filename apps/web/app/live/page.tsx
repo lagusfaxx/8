@@ -271,7 +271,7 @@ export default function LivePage() {
         )}
       </div>
 
-      {/* Whitelabel iframe — live.uzeed.cl (same-site subdomain, no third-party blocking) */}
+      {/* Whitelabel iframe — live.uzeed.mx (same-site subdomain, no third-party blocking) */}
       <section className="border-t border-fuchsia-500/15 bg-black">
         <div className="mx-auto max-w-7xl px-4 pt-5 pb-3">
           <div className="flex items-center gap-2 flex-wrap">

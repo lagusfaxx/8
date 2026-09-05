@@ -77,7 +77,7 @@ export default function StatsPage() {
               { label: "Engagement promedio", value: `${analytics.engagement.toFixed(1)} likes/post`, pct: Math.min(100, analytics.engagement * 3) },
               { label: "Conversión likes → subs", value: `${analytics.conversion.toFixed(1)}%`, pct: Math.min(100, analytics.conversion * 2) },
               { label: "Crecimiento del ciclo", value: `${analytics.growth.toFixed(1)}%`, pct: Math.min(100, analytics.growth * 5) },
-              { label: "Revenue por suscriptor", value: `$${Math.round(analytics.revenuePerSub).toLocaleString("es-CL")}`, pct: Math.min(100, analytics.revenuePerSub / 100) },
+              { label: "Revenue por suscriptor", value: `$${Math.round(analytics.revenuePerSub).toLocaleString("es-MX")}`, pct: Math.min(100, analytics.revenuePerSub / 100) },
               { label: "Tasa de churn estimada", value: `${analytics.churnRate.toFixed(1)}%`, pct: Math.min(100, analytics.churnRate * 3) },
             ].map((m) => (
               <div key={m.label}>
@@ -104,7 +104,7 @@ export default function StatsPage() {
                 `Engagement: ${analytics.engagement.toFixed(1)} likes/post. ${analytics.engagement > 5 ? "Excelente." : "Hay espacio para mejorar."}`,
                 `Cada 100 likes → ~${analytics.conversion.toFixed(1)} suscriptores.`,
                 `Crecimiento: ${analytics.growth.toFixed(1)}% del total.`,
-                `Revenue/sub: $${Math.round(analytics.revenuePerSub).toLocaleString("es-CL")}.`,
+                `Revenue/sub: $${Math.round(analytics.revenuePerSub).toLocaleString("es-MX")}.`,
               ].map((t) => (
                 <li key={t} className="rounded-lg bg-white/[0.04] p-3 text-sm text-white/40">{t}</li>
               ))}
@@ -117,15 +117,15 @@ export default function StatsPage() {
             <div className="mt-3 space-y-2">
               <div className="flex items-center justify-between rounded-lg bg-emerald-500/[0.06] p-2.5 text-sm">
                 <span className="text-emerald-400/70">Total ganado</span>
-                <span className="font-semibold text-emerald-400">${stats.totalEarned.toLocaleString("es-CL")}</span>
+                <span className="font-semibold text-emerald-400">${stats.totalEarned.toLocaleString("es-MX")}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg bg-white/[0.03] p-2.5 text-sm">
                 <span className="text-white/40">Disponible</span>
-                <span className="font-semibold text-white">${stats.availableBalance.toLocaleString("es-CL")}</span>
+                <span className="font-semibold text-white">${stats.availableBalance.toLocaleString("es-MX")}</span>
               </div>
               <div className="flex items-center justify-between rounded-lg bg-amber-500/[0.06] p-2.5 text-sm">
                 <span className="text-amber-400/70">Retenido</span>
-                <span className="font-semibold text-amber-400">${stats.pendingBalance.toLocaleString("es-CL")}</span>
+                <span className="font-semibold text-amber-400">${stats.pendingBalance.toLocaleString("es-MX")}</span>
               </div>
             </div>
           </div>

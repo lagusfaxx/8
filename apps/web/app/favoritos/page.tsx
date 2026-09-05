@@ -304,7 +304,7 @@ export default function FavoritesPage() {
                   <div className="mt-3 text-[11px] text-white/35">
                     {(() => {
                       try {
-                        return `Completado el ${new Date(service.updatedAt).toLocaleDateString('es-CL')}`;
+                        return `Completado el ${new Date(service.updatedAt).toLocaleDateString('es-MX')}`;
                       } catch {
                         return `Completado recientemente`;
                       }

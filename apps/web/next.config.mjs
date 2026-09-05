@@ -33,7 +33,7 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "api.uzeed.cl",
+        hostname: "api.uzeed.mx",
       },
     ],
     formats: ["image/avif", "image/webp"],
@@ -181,8 +181,8 @@ const nextConfig = {
       { source: "/sexshops", destination: "/sexshop", permanent: true },
       { source: "/hospedajes", destination: "/hospedaje", permanent: true },
       { source: "/hot", destination: "/premium", permanent: true },
-      // Live section now lives on the live.uzeed.cl whitelabel
-      { source: "/live", destination: "https://live.uzeed.cl/south-american-cams/female/", permanent: false },
+      // Live section now lives on the live.uzeed.mx whitelabel
+      { source: "/live", destination: "https://live.uzeed.mx/south-american-cams/female/", permanent: false },
     ];
   },
   async rewrites() {

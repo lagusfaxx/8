@@ -77,7 +77,7 @@ function profileLabel(type: string) {
 }
 
 function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString("es-CL", {
+  return new Date(dateStr).toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -91,7 +91,7 @@ function formatDate(dateStr: string) {
 
   if (d.toDateString() === today.toDateString()) return "Hoy";
   if (d.toDateString() === yesterday.toDateString()) return "Ayer";
-  return d.toLocaleDateString("es-CL", {
+  return d.toLocaleDateString("es-MX", {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -481,7 +481,7 @@ export default function ChatPage() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-white/40">Inicio:</span>{" "}
                   {activeBooking?.startAt
-                    ? new Date(activeBooking.startAt).toLocaleString("es-CL")
+                    ? new Date(activeBooking.startAt).toLocaleString("es-MX")
                     : "por confirmar"}
                 </div>
                 {activeBooking?.basePriceClp &&
@@ -492,7 +492,7 @@ export default function ChatPage() {
                       <span className="line-through">
                         $
                         {Number(activeBooking.basePriceClp).toLocaleString(
-                          "es-CL",
+                          "es-MX",
                         )}
                       </span>
                     </div>
@@ -502,14 +502,14 @@ export default function ChatPage() {
                   <span className="font-medium text-white/80">
                     $
                     {Number(activeBooking?.priceClp || 0).toLocaleString(
-                      "es-CL",
+                      "es-MX",
                     )}
                   </span>
                   {Number(activeBooking?.discountClp || 0) > 0 && (
                     <span className="text-emerald-400">
                       (-$
                       {Number(activeBooking?.discountClp || 0).toLocaleString(
-                        "es-CL",
+                        "es-MX",
                       )}
                       )
                     </span>

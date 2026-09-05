@@ -99,7 +99,7 @@ function ConfirmContent() {
             )}
             {subInfo?.priceCLP != null && (
               <p className="mt-1 text-xs text-white/40">
-                ${subInfo.priceCLP.toLocaleString("es-CL")} CLP / mes · se renueva automáticamente con PAC
+                ${subInfo.priceCLP.toLocaleString("es-MX")} MXN / mes · se renueva automáticamente con PAC
               </p>
             )}
             {subInfo?.cardLast4 && (

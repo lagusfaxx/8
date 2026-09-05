@@ -383,7 +383,7 @@ export default function CreatorProfilePage() {
                   >
                     <span>Suscribirme</span>
                     <span className="text-[10px] font-semibold opacity-90">
-                      ${creator.monthlyPriceCLP.toLocaleString("es-CL")} /mes
+                      ${creator.monthlyPriceCLP.toLocaleString("es-MX")} /mes
                     </span>
                   </button>
                 )}
@@ -453,7 +453,7 @@ export default function CreatorProfilePage() {
               {post.caption && (
                 <div className="px-4 pt-4 pb-3">
                   <p className="text-sm leading-relaxed text-white/70">{post.caption}</p>
-                  <p className="mt-1.5 text-[11px] text-white/45">{new Date(post.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}</p>
+                  <p className="mt-1.5 text-[11px] text-white/45">{new Date(post.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}</p>
                 </div>
               )}
 
@@ -539,7 +539,7 @@ export default function CreatorProfilePage() {
                             <span className="font-semibold text-white/80">{c.user.displayName || c.user.username}</span>{" "}
                             <span className="text-white/50">{c.text}</span>
                           </p>
-                          <p className="mt-0.5 text-[10px] text-white/45">{new Date(c.createdAt).toLocaleDateString("es-CL")}</p>
+                          <p className="mt-0.5 text-[10px] text-white/45">{new Date(c.createdAt).toLocaleDateString("es-MX")}</p>
                         </div>
                         {me?.user?.id === c.user.id && (
                           <button

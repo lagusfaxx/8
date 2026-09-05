@@ -38,5 +38,5 @@ export default async function ProfileUsernamePage({
     permanentRedirect(canonical);
   }
 
-  return <ProfileServerView profile={p} canonicalUrl={`https://uzeed.cl${canonical}`} />;
+  return <ProfileServerView profile={p} canonicalUrl={`https://uzeed.mx${canonical}`} />;
 }

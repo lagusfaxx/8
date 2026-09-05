@@ -10,7 +10,7 @@ import { cleanProfileHref } from "./profileUrl";
  */
 
 const DEFAULT_API =
-  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.cl";
+  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.mx";
 
 function apiBase(): string {
   return DEFAULT_API.replace(/\/+$/, "");
@@ -103,7 +103,7 @@ export async function fetchProfileById(id: string): Promise<ProfileRecord | null
 /** Construye los metadatos SEO de un perfil dado su record y su URL canónica. */
 export function buildProfileMetadata(p: ProfileRecord, canonicalPath: string): Metadata {
   const name = p.name || "Profesional";
-  const city = p.city || "Chile";
+  const city = p.city || "México";
   const category = (p.serviceCategory || "Escort").trim();
   const title = `${name} — ${category} en ${city}`;
   const brandedTitle = `${title} | UZEED`;
@@ -118,7 +118,7 @@ export function buildProfileMetadata(p: ProfileRecord, canonicalPath: string): M
 
   const images = p.avatarUrl
     ? [{ url: p.avatarUrl, width: 400, height: 400, alt: `${name} - ${category} en ${city}` }]
-    : [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED" }];
+    : [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED" }];
 
   return {
     title,
@@ -134,7 +134,7 @@ export function buildProfileMetadata(p: ProfileRecord, canonicalPath: string): M
     openGraph: {
       title: brandedTitle,
       description,
-      url: `https://uzeed.cl${canonicalPath}`,
+      url: `https://uzeed.mx${canonicalPath}`,
       type: "profile",
       images,
     },

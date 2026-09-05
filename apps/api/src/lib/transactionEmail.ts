@@ -13,7 +13,7 @@ function wrapEmail(title: string, contentRows: string): string {
   <tr><td align="center">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1),rgba(59,130,246,0.08));border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;">
       <tr><td align="center" style="padding:40px 30px 20px;">
-        <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+        <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
       </td></tr>
       <tr><td align="center" style="padding:0 30px 8px;">
         <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">${title}</h1>
@@ -21,7 +21,7 @@ function wrapEmail(title: string, contentRows: string): string {
       ${contentRows}
       <tr><td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
         <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
-          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.cl
+          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.mx
         </p>
       </td></tr>
     </table>
@@ -56,13 +56,13 @@ export async function sendDepositConfirmationEmail(
   data: { tokens: number; clpAmount: number; date: Date },
 ) {
   if (!config.resendApiKey) return;
-  const dateStr = data.date.toLocaleDateString("es-CL", { day: "2-digit", month: "long", year: "numeric" });
+  const dateStr = data.date.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
   const html = wrapEmail(
     "Compra de tokens confirmada",
     [
       `<tr><td align="center" style="padding:0 30px 20px;"><p style="margin:0;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.5;">Tu compra fue registrada exitosamente.</p></td></tr>`,
       row("Tokens", `${data.tokens}`),
-      row("Monto", `$${data.clpAmount.toLocaleString("es-CL")} CLP`),
+      row("Monto", `$${data.clpAmount.toLocaleString("es-MX")} CLP`),
       row("Fecha", dateStr),
       statusBadge("PENDIENTE DE APROBACIÓN", "rgba(245,158,11,0.8)"),
     ].join(""),
@@ -70,7 +70,7 @@ export async function sendDepositConfirmationEmail(
   try {
     const resend = new Resend(config.resendApiKey);
     await resend.emails.send({
-      from: "UZEED <no-reply@uzeed.cl>",
+      from: "UZEED <no-reply@uzeed.mx>",
       to: email,
       subject: "Compra de tokens registrada — UZEED",
       html,
@@ -90,14 +90,14 @@ export async function sendDepositApprovedEmail(
     [
       `<tr><td align="center" style="padding:0 30px 20px;"><p style="margin:0;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.5;">Tus tokens han sido acreditados en tu billetera.</p></td></tr>`,
       row("Tokens acreditados", `${data.tokens}`),
-      row("Monto pagado", `$${data.clpAmount.toLocaleString("es-CL")} CLP`),
+      row("Monto pagado", `$${data.clpAmount.toLocaleString("es-MX")} CLP`),
       statusBadge("APROBADO", "rgba(16,185,129,0.8)"),
     ].join(""),
   );
   try {
     const resend = new Resend(config.resendApiKey);
     await resend.emails.send({
-      from: "UZEED <no-reply@uzeed.cl>",
+      from: "UZEED <no-reply@uzeed.mx>",
       to: email,
       subject: "Tokens acreditados en tu billetera — UZEED",
       html,
@@ -112,13 +112,13 @@ export async function sendWithdrawalConfirmationEmail(
   data: { tokens: number; clpAmount: number; bankName: string; date: Date },
 ) {
   if (!config.resendApiKey) return;
-  const dateStr = data.date.toLocaleDateString("es-CL", { day: "2-digit", month: "long", year: "numeric" });
+  const dateStr = data.date.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
   const html = wrapEmail(
     "Solicitud de retiro registrada",
     [
       `<tr><td align="center" style="padding:0 30px 20px;"><p style="margin:0;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.5;">Tu solicitud de retiro está siendo procesada.</p></td></tr>`,
       row("Tokens a retirar", `${data.tokens}`),
-      row("Monto estimado", `$${data.clpAmount.toLocaleString("es-CL")} CLP`),
+      row("Monto estimado", `$${data.clpAmount.toLocaleString("es-MX")} CLP`),
       row("Banco destino", data.bankName),
       row("Fecha", dateStr),
       statusBadge("EN PROCESO", "rgba(245,158,11,0.8)"),
@@ -127,7 +127,7 @@ export async function sendWithdrawalConfirmationEmail(
   try {
     const resend = new Resend(config.resendApiKey);
     await resend.emails.send({
-      from: "UZEED <no-reply@uzeed.cl>",
+      from: "UZEED <no-reply@uzeed.mx>",
       to: email,
       subject: "Solicitud de retiro registrada — UZEED",
       html,
@@ -147,7 +147,7 @@ export async function sendWithdrawalApprovedEmail(
     [
       `<tr><td align="center" style="padding:0 30px 20px;"><p style="margin:0;font-size:14px;color:rgba(255,255,255,0.6);line-height:1.5;">Tu retiro fue aprobado y será depositado en tu cuenta bancaria.</p></td></tr>`,
       row("Tokens retirados", `${data.tokens}`),
-      row("Monto a depositar", `$${data.clpAmount.toLocaleString("es-CL")} CLP`),
+      row("Monto a depositar", `$${data.clpAmount.toLocaleString("es-MX")} CLP`),
       row("Banco destino", data.bankName),
       statusBadge("APROBADO", "rgba(16,185,129,0.8)"),
     ].join(""),
@@ -155,7 +155,7 @@ export async function sendWithdrawalApprovedEmail(
   try {
     const resend = new Resend(config.resendApiKey);
     await resend.emails.send({
-      from: "UZEED <no-reply@uzeed.cl>",
+      from: "UZEED <no-reply@uzeed.mx>",
       to: email,
       subject: "Retiro aprobado — UZEED",
       html,

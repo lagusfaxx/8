@@ -77,8 +77,8 @@ app.use(
 
 const corsOrigins = Array.from(
   new Set([
-    "https://uzeed.cl",
-    "https://www.uzeed.cl",
+    "https://uzeed.mx",
+    "https://www.uzeed.mx",
     // Capacitor native app origins
     "capacitor://localhost",
     "http://localhost",

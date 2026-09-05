@@ -56,7 +56,7 @@ function timeAgo(iso: string): string {
 }
 
 function formatDate(iso: string): string {
-  return new Intl.DateTimeFormat("es-CL", {
+  return new Intl.DateTimeFormat("es-MX", {
     day: "2-digit",
     month: "short",
     year: "numeric",

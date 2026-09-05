@@ -10,7 +10,7 @@ import { cleanProfileHref } from "../lib/profileUrl";
  */
 
 const DEFAULT_API =
-  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.cl";
+  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.mx";
 
 function apiBase(): string {
   return DEFAULT_API.replace(/\/+$/, "");

@@ -30,7 +30,7 @@ export default function UmatePricingPage() {
   const handleSave = async () => {
     const priceInt = parseInt(price, 10);
     if (!Number.isFinite(priceInt) || priceInt < 1000 || priceInt > 200000) {
-      setMsg("El precio debe estar entre $1.000 y $200.000 CLP.");
+      setMsg("El precio debe estar entre $1.000 y $200.000 MXN.");
       return;
     }
     setSaving(true);
@@ -81,7 +81,7 @@ export default function UmatePricingPage() {
 
         <div className="mt-5">
           <label className="text-[11px] font-semibold uppercase tracking-wider text-white/30">
-            Precio (CLP)
+            Precio (MXN)
           </label>
           <div className="mt-1 flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3.5 py-3 transition focus-within:border-[#00aff0]/30">
             <span className="text-white/40">$</span>
@@ -101,7 +101,7 @@ export default function UmatePricingPage() {
             <span className="text-xs text-white/25">/ mes</span>
           </div>
           <p className="mt-1 text-[10px] text-white/25">
-            Mínimo $1.000 · Máximo $200.000 CLP.
+            Mínimo $1.000 · Máximo $200.000 MXN.
           </p>
         </div>
 

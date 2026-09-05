@@ -296,7 +296,7 @@ export default function DirectoryPage({
   const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
 
   /* ── location: a `city` landing prop wins over the user's stored context
-     so /escorts/santiago always returns Santiago results and stays self-
+     so /escorts/ciudad-de-mexico always returns CDMX results and stays self-
      canonical. Memoized so the coord array keeps a stable identity and does
      not retrigger the fetch effect on every render. ── */
   const effectiveLoc = useMemo<[number, number] | null>(
@@ -332,9 +332,9 @@ export default function DirectoryPage({
         params.set("lng", String(effectiveLoc[1]));
         params.set("radiusKm", "100");
       }
-      // Con comuna elegida, la API pone primero los perfiles de esa comuna y
-      // después el resto por cercanía: medir contra el centro de la comuna
-      // dejaba perfiles de la comuna vecina por delante de los propios.
+      // Con ciudad elegida, la API pone primero los perfiles de esa ciudad y
+      // después el resto por cercanía: medir contra el centro de la ciudad
+      // dejaba perfiles de la ciudad vecina por delante de los propios.
       if (selectedCityName) params.set("city", selectedCityName);
       if (profileTagsFilter.length) params.set("profileTags", profileTagsFilter.join(","));
       if (serviceTagsFilter.length) params.set("serviceTags", serviceTagsFilter.join(","));

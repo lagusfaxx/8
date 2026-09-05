@@ -85,9 +85,9 @@ export default function AdminDepositsPage() {
                     <p className="text-[10px] text-white/40">{d.wallet.user.email} · {d.wallet.user.profileType}</p>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="text-lg font-bold text-fuchsia-300">{d.amount} tokens</span>
-                      <span className="text-xs text-white/40">${d.clpAmount.toLocaleString("es-CL")} CLP</span>
+                      <span className="text-xs text-white/40">${d.clpAmount.toLocaleString("es-MX")} MXN</span>
                     </div>
-                    <p className="mt-1 text-[10px] text-white/30">{new Date(d.createdAt).toLocaleString("es-CL")}</p>
+                    <p className="mt-1 text-[10px] text-white/30">{new Date(d.createdAt).toLocaleString("es-MX")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {d.receiptUrl && (

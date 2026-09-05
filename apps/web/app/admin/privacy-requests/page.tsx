@@ -70,7 +70,7 @@ export default function PrivacyRequestsPage() {
                   )}
                 </div>
                 <span className="shrink-0 text-[10px] text-white/40">
-                  {new Date(n.timestamp).toLocaleString("es-CL")}
+                  {new Date(n.timestamp).toLocaleString("es-MX")}
                 </span>
               </div>
             </div>

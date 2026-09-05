@@ -38,8 +38,8 @@ export const registerInputSchema = z
     phone: z
       .string()
       .regex(
-        /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/,
-        "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+        /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/,
+        "Ingresa un número válido con código de país (+52, +57, +58 o +51).",
       ),
     email: z.string().email(),
     password: z.string().min(8).max(128),

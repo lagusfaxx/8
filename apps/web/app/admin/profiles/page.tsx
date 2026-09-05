@@ -82,7 +82,7 @@ const GENDERS = [
 
 type GenderValue = (typeof GENDERS)[number]["value"];
 
-// Mismo formato que valida la API (Chile, Colombia, Venezuela y Perú móviles).
+// Mismo formato que valida la API (México, Colombia, Venezuela y Perú móviles).
 // El número de WhatsApp es la vía de contacto del anuncio: si está mal escrito
 // el perfil queda publicado sin forma de contactarlo, así que el admin lo puede
 // corregir desde aquí sin pasar por una solicitud de cambio.
@@ -91,7 +91,7 @@ const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 20;
 
 const PHONE_REGEX =
-  /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
+  /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
 
 function waLink(phone: string): string {
   const cleaned = phone.replace(/[^0-9+]/g, "");
@@ -316,7 +316,7 @@ export default function AdminProfilesPage() {
       const digits = trimmed.replace(/[^\d]/g, "");
       const parsed = Number(digits);
       if (!Number.isFinite(parsed) || parsed < 0 || parsed > 10000000) {
-        setError("La tarifa debe ser un número entre 0 y 10.000.000 CLP.");
+        setError("La tarifa debe ser un número entre 0 y 10.000.000 MXN.");
         return;
       }
       nextRate = Math.round(parsed);
@@ -340,7 +340,7 @@ export default function AdminProfilesPage() {
       });
       setSuccess(
         nextRate != null
-          ? `Tarifa de ${profile.displayName || profile.username} actualizada a $${nextRate.toLocaleString("es-CL")}.`
+          ? `Tarifa de ${profile.displayName || profile.username} actualizada a $${nextRate.toLocaleString("es-MX")}.`
           : `Tarifa de ${profile.displayName || profile.username} eliminada.`,
       );
       cancelEditingRate();
@@ -369,7 +369,7 @@ export default function AdminProfilesPage() {
     const nextPhone = trimmed === "" ? null : trimmed;
 
     if (nextPhone !== null && !PHONE_REGEX.test(nextPhone)) {
-      setError("Número inválido. Usa formato internacional, por ejemplo +56 9 1234 5678.");
+      setError("Número inválido. Usa formato internacional, por ejemplo +52 55 1234 5678.");
       return;
     }
     if (nextPhone === (profile.phone ?? null)) {
@@ -603,7 +603,7 @@ export default function AdminProfilesPage() {
                     <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px]">{p.profileType}</span>
                     {p.city && <span>{p.city}</span>}
                     <span>{p.profileViews} vistas</span>
-                    <span>{new Date(p.createdAt).toLocaleDateString("es-CL")}</span>
+                    <span>{new Date(p.createdAt).toLocaleDateString("es-MX")}</span>
                   </div>
                 </div>
 
@@ -850,7 +850,7 @@ export default function AdminProfilesPage() {
                       inputMode="tel"
                       value={phoneInput}
                       onChange={(e) => setPhoneInput(e.target.value)}
-                      placeholder="+56 9 1234 5678"
+                      placeholder="+52 55 1234 5678"
                       className="w-44 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 text-[11px] outline-none focus:border-fuchsia-500/30 transition"
                     />
                     <button
@@ -968,7 +968,7 @@ export default function AdminProfilesPage() {
                       <span className="text-[10px] text-white/40">
                         {rateInput.trim() === ""
                           ? "Vacío = sin tarifa"
-                          : `$${Number(rateInput.replace(/[^\d]/g, "") || "0").toLocaleString("es-CL")} CLP`}
+                          : `$${Number(rateInput.replace(/[^\d]/g, "") || "0").toLocaleString("es-MX")} MXN`}
                       </span>
                     </form>
                   ) : (
@@ -984,7 +984,7 @@ export default function AdminProfilesPage() {
                       >
                         {p.baseRate == null
                           ? "Sin tarifa"
-                          : `$${p.baseRate.toLocaleString("es-CL")} CLP`}
+                          : `$${p.baseRate.toLocaleString("es-MX")} MXN`}
                       </span>
                       {p.baseRate != null && p.baseRate > 0 && p.baseRate < 1000 && (
                         <span className="text-[10px] text-red-300">

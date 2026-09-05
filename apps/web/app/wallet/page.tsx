@@ -240,11 +240,11 @@ export default function WalletPage() {
               </p>
               <p className="text-sm text-white/40 mt-0.5">
                 {balanceVisible
-                  ? `$${(wallet.balance * rate).toLocaleString("es-CL")} CLP`
-                  : "••••• CLP"
+                  ? `$${(wallet.balance * rate).toLocaleString("es-MX")} MXN`
+                  : "••••• MXN"
                 }
               </p>
-              <p className="text-[10px] text-white/25 mt-1">1 token = ${rate.toLocaleString("es-CL")} CLP</p>
+              <p className="text-[10px] text-white/25 mt-1">1 token = ${rate.toLocaleString("es-MX")} MXN</p>
             </div>
 
             {/* Mini stats row */}
@@ -379,7 +379,7 @@ export default function WalletPage() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="truncate text-xs text-white/80">{tx.description}</p>
-                            <p className="text-[10px] text-white/25">{new Date(tx.createdAt).toLocaleString("es-CL")}</p>
+                            <p className="text-[10px] text-white/25">{new Date(tx.createdAt).toLocaleString("es-MX")}</p>
                           </div>
                           <span className={`ml-2 text-sm font-bold tabular-nums ${tx.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                             {tx.amount >= 0 ? "+" : ""}{tx.amount}
@@ -432,7 +432,7 @@ export default function WalletPage() {
                         </span>
                       )}
                       <p className="text-lg font-bold">{pkg.tokens}</p>
-                      <p className="text-[10px] text-white/40">${(pkg.tokens * rate).toLocaleString("es-CL")}</p>
+                      <p className="text-[10px] text-white/40">${(pkg.tokens * rate).toLocaleString("es-MX")}</p>
                     </button>
                   ))}
                 </div>
@@ -448,7 +448,7 @@ export default function WalletPage() {
                 />
                 {depositTokens && (
                   <p className="mb-4 text-xs text-white/40">
-                    Total: ${(parseInt(depositTokens || "0", 10) * rate).toLocaleString("es-CL")} CLP
+                    Total: ${(parseInt(depositTokens || "0", 10) * rate).toLocaleString("es-MX")} CLP
                   </p>
                 )}
 
@@ -585,7 +585,7 @@ export default function WalletPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium">{d.amount} tokens</p>
-                            <p className="text-[10px] text-white/30">${d.clpAmount.toLocaleString("es-CL")} · {new Date(d.createdAt).toLocaleDateString("es-CL")}</p>
+                            <p className="text-[10px] text-white/30">${d.clpAmount.toLocaleString("es-MX")} · {new Date(d.createdAt).toLocaleDateString("es-MX")}</p>
                           </div>
                         </div>
                         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusColors[d.status] || ""}`}>
@@ -625,7 +625,7 @@ export default function WalletPage() {
                 />
                 {withdrawTokens && (
                   <p className="mb-4 text-xs text-white/40">
-                    = ${(parseInt(withdrawTokens || "0", 10) * rate).toLocaleString("es-CL")} CLP
+                    = ${(parseInt(withdrawTokens || "0", 10) * rate).toLocaleString("es-MX")} CLP
                   </p>
                 )}
 
@@ -690,7 +690,7 @@ export default function WalletPage() {
                           </div>
                           <div>
                             <p className="text-sm font-medium">{w.amount} tokens</p>
-                            <p className="text-[10px] text-white/30">${w.clpAmount.toLocaleString("es-CL")} · {w.bankName} · {new Date(w.createdAt).toLocaleDateString("es-CL")}</p>
+                            <p className="text-[10px] text-white/30">${w.clpAmount.toLocaleString("es-MX")} · {w.bankName} · {new Date(w.createdAt).toLocaleDateString("es-MX")}</p>
                           </div>
                         </div>
                         <span className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${statusColors[w.status] || ""}`}>
@@ -719,7 +719,7 @@ export default function WalletPage() {
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-xs text-white/70">{tx.description}</p>
                         <p className="text-[10px] text-white/25">
-                          {new Date(tx.createdAt).toLocaleString("es-CL")} · Saldo: {tx.balance}
+                          {new Date(tx.createdAt).toLocaleString("es-MX")} · Saldo: {tx.balance}
                         </p>
                       </div>
                       <span className={`ml-2 text-xs font-bold tabular-nums ${tx.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>

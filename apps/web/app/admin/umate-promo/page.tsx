@@ -48,7 +48,7 @@ type UploadedImage = {
 
 const DEFAULT_BODY = `<p>Hola,</p>
 <p>Tenemos novedades para compartir contigo. Te invitamos a revisar las nuevas funciones y a aprovechar las oportunidades activas en UZEED.</p>
-<p>Si tienes dudas, escribenos a soporte@uzeed.cl.</p>`;
+<p>Si tienes dudas, escribenos a soporte@uzeed.mx.</p>`;
 
 export default function EmailCampaignPage() {
   const { me, loading } = useMe();
@@ -539,7 +539,7 @@ export default function EmailCampaignPage() {
                 <button
                   onClick={() =>
                     insertSnippet(
-                      '<a href="https://uzeed.cl" style="color:#a855f7;">Texto del enlace</a>',
+                      '<a href="https://uzeed.mx" style="color:#a855f7;">Texto del enlace</a>',
                     )
                   }
                   className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-xs text-white/60 hover:bg-white/[0.08]"
@@ -624,7 +624,7 @@ export default function EmailCampaignPage() {
                   type="url"
                   value={ctaUrl}
                   onChange={(e) => setCtaUrl(e.target.value)}
-                  placeholder="https://uzeed.cl/..."
+                  placeholder="https://uzeed.mx/..."
                   className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder:text-white/20 outline-none focus:border-fuchsia-500/30 transition-colors"
                 />
               </div>

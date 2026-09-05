@@ -87,7 +87,7 @@ export default function CreatorDashboardPage() {
             <DollarSign className="h-4 w-4 text-emerald-400" />
             <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-400/70">Disponible</p>
           </div>
-          <p className="mt-2 text-2xl font-extrabold text-emerald-400">${stats.availableBalance.toLocaleString("es-CL")}</p>
+          <p className="mt-2 text-2xl font-extrabold text-emerald-400">${stats.availableBalance.toLocaleString("es-MX")}</p>
           <p className="mt-1 text-xs text-white/45">Listo para retirar</p>
         </div>
         <div className="rounded-2xl border border-amber-500/15 bg-amber-500/[0.04] p-5">
@@ -95,7 +95,7 @@ export default function CreatorDashboardPage() {
             <Zap className="h-4 w-4 text-amber-400" />
             <p className="text-[11px] font-bold uppercase tracking-wider text-amber-400/70">Retenido</p>
           </div>
-          <p className="mt-2 text-2xl font-extrabold text-amber-400">${stats.pendingBalance.toLocaleString("es-CL")}</p>
+          <p className="mt-2 text-2xl font-extrabold text-amber-400">${stats.pendingBalance.toLocaleString("es-MX")}</p>
           <p className="mt-1 text-xs text-white/45">En período de retención</p>
         </div>
         <div className="rounded-2xl border border-white/[0.04] bg-white/[0.015] p-5">
@@ -103,7 +103,7 @@ export default function CreatorDashboardPage() {
             <TrendingUp className="h-4 w-4 text-white/40" />
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/40">Total histórico</p>
           </div>
-          <p className="mt-2 text-2xl font-extrabold text-white">${stats.totalEarned.toLocaleString("es-CL")}</p>
+          <p className="mt-2 text-2xl font-extrabold text-white">${stats.totalEarned.toLocaleString("es-MX")}</p>
           <p className="mt-1 text-xs text-white/45">Acumulado</p>
         </div>
       </div>

@@ -427,9 +427,9 @@ motelRouter.post("/motels/:id/bookings", asyncHandler(async (req, res) => {
   sendToUser(establishmentId, "booking:new", { bookingId: booking.id });
 
   const roomName = fallbackRoom.name || "Habitación";
-  const startLabel = startAt ? new Date(startAt).toLocaleString("es-CL") : "por confirmar";
-  const discountLine = priced.discountClp > 0 ? `\n• Descuento: -$${Number(priced.discountClp || 0).toLocaleString("es-CL")}` : "";
-  await sendBookingMessage(clientId, establishmentId, `Nueva solicitud de reserva\n• Duración: ${durationType}\n• Habitación: ${roomName}\n• Fecha/Hora: ${startLabel}\n• Monto final: $${Number(priced.finalPriceClp || 0).toLocaleString("es-CL")}${discountLine}\n${note ? `• Comentario: ${note}` : ""}`);
+  const startLabel = startAt ? new Date(startAt).toLocaleString("es-MX") : "por confirmar";
+  const discountLine = priced.discountClp > 0 ? `\n• Descuento: -$${Number(priced.discountClp || 0).toLocaleString("es-MX")}` : "";
+  await sendBookingMessage(clientId, establishmentId, `Nueva solicitud de reserva\n• Duración: ${durationType}\n• Habitación: ${roomName}\n• Fecha/Hora: ${startLabel}\n• Monto final: $${Number(priced.finalPriceClp || 0).toLocaleString("es-MX")}${discountLine}\n${note ? `• Comentario: ${note}` : ""}`);
 
   return res.json({ booking });
 }));
@@ -542,7 +542,7 @@ motelRouter.post("/motel/bookings/:id/action", asyncHandler(async (req, res) => 
   sendToUser(notifyUserId, "booking:update", { bookingId: updated.id, status: nextStatus, rejectReason: updated.rejectReason, rejectNote: updated.rejectNote });
 
   if (isOwner && nextStatus === "ACEPTADA") {
-    await sendBookingMessage(booking.establishmentId, booking.clientId, `✅ Tu reserva fue aceptada. Precio final: $${Number(updated.priceClp || 0).toLocaleString("es-CL")}. Debes confirmarla para activarla.`);
+    await sendBookingMessage(booking.establishmentId, booking.clientId, `✅ Tu reserva fue aceptada. Precio final: $${Number(updated.priceClp || 0).toLocaleString("es-MX")}. Debes confirmarla para activarla.`);
   }
   if (isOwner && nextStatus === "RECHAZADA") {
     const reasonText = rejectReason === "CERRADO" ? "Local cerrado" : rejectReason === "SIN_HABITACIONES" ? "Sin habitaciones" : `Otro motivo: ${rejectNote}`;
@@ -556,8 +556,8 @@ motelRouter.post("/motel/bookings/:id/action", asyncHandler(async (req, res) => 
     const mapsLink = mapsLinkFrom(establishment?.address, establishment?.city, establishment?.displayName || "Motel");
     const code = updated.confirmationCode || "SIN-CODIGO";
     const roomLabel = room?.name || "Habitación";
-    await sendBookingMessage(booking.clientId, booking.establishmentId, `✅ El cliente confirmó la reserva para ${updated.durationType}. Código: ${code}. Inicio: ${updated.startAt ? new Date(updated.startAt).toLocaleString("es-CL") : "por confirmar"}.`);
-    await sendBookingMessage(booking.establishmentId, booking.clientId, `🎫 Reserva confirmada\n• Código: ${code}\n• Estado: CONFIRMADA\n• Habitación asignada: ${roomLabel}\n• Monto final: $${Number(updated.priceClp || 0).toLocaleString("es-CL")}\n• Inicio: ${updated.startAt ? new Date(updated.startAt).toLocaleString("es-CL") : "por confirmar"}\n• Dirección: ${(establishment?.address || "Dirección por confirmar")}${establishment?.city ? `, ${establishment.city}` : ""}\n• Google Maps: ${mapsLink}`);
+    await sendBookingMessage(booking.clientId, booking.establishmentId, `✅ El cliente confirmó la reserva para ${updated.durationType}. Código: ${code}. Inicio: ${updated.startAt ? new Date(updated.startAt).toLocaleString("es-MX") : "por confirmar"}.`);
+    await sendBookingMessage(booking.establishmentId, booking.clientId, `🎫 Reserva confirmada\n• Código: ${code}\n• Estado: CONFIRMADA\n• Habitación asignada: ${roomLabel}\n• Monto final: $${Number(updated.priceClp || 0).toLocaleString("es-MX")}\n• Inicio: ${updated.startAt ? new Date(updated.startAt).toLocaleString("es-MX") : "por confirmar"}\n• Dirección: ${(establishment?.address || "Dirección por confirmar")}${establishment?.city ? `, ${establishment.city}` : ""}\n• Google Maps: ${mapsLink}`);
   }
 
   const bookingWithDetails = await getBookingWithDetails(updated.id);

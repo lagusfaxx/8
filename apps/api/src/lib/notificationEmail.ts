@@ -23,7 +23,7 @@ function wrapEmail(title: string, contentRows: string): string {
   <tr><td align="center">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1),rgba(59,130,246,0.08));border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;">
       <tr><td align="center" style="padding:40px 30px 20px;">
-        <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+        <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
       </td></tr>
       <tr><td align="center" style="padding:0 30px 8px;">
         <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">${title}</h1>
@@ -31,7 +31,7 @@ function wrapEmail(title: string, contentRows: string): string {
       ${contentRows}
       <tr><td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
         <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
-          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.cl
+          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.mx
         </p>
       </td></tr>
     </table>
@@ -76,7 +76,7 @@ async function send(to: string, subject: string, html: string) {
   try {
     const resend = new Resend(config.resendApiKey);
     await resend.emails.send({
-      from: "UZEED <no-reply@uzeed.cl>",
+      from: "UZEED <no-reply@uzeed.mx>",
       to,
       subject,
       html,
@@ -197,13 +197,13 @@ export async function sendVideocallBookingConfirmation(
     totalTokens: number;
   },
 ) {
-  const dateStr = data.scheduledAt.toLocaleDateString("es-CL", {
+  const dateStr = data.scheduledAt.toLocaleDateString("es-MX", {
     weekday: "long",
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
-  const timeStr = data.scheduledAt.toLocaleTimeString("es-CL", {
+  const timeStr = data.scheduledAt.toLocaleTimeString("es-MX", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: "America/Santiago",
@@ -512,7 +512,7 @@ export function generateWeeklyHighlightsHtml(
       const name = esc(p.displayName || p.username);
       const city = p.city ? esc(p.city) : "";
       const category = p.primaryCategory ? esc(p.primaryCategory) : "";
-      const avatarSrc = p.avatarUrl || "https://uzeed.cl/brand/isotipo-new.png";
+      const avatarSrc = p.avatarUrl || "https://uzeed.mx/brand/isotipo-new.png";
       const profileUrl = `${config.appUrl}/profile/${esc(p.username)}`;
 
       return `<tr><td style="padding:8px 30px;">

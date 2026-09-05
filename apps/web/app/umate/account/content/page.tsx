@@ -593,7 +593,7 @@ export default function ContentPage() {
                       <Eye className="h-3 w-3 text-[#00aff0]" /> {post.viewCount}
                     </span>
                   </div>
-                  <span>{new Date(post.createdAt).toLocaleDateString("es-CL")}</span>
+                  <span>{new Date(post.createdAt).toLocaleDateString("es-MX")}</span>
                 </div>
               </div>
             </article>

@@ -14,7 +14,7 @@ type Cam = {
 };
 
 const TRACK = "uzeed_home_cams_grid";
-const WHITELABEL_BASE = "https://live.uzeed.cl";
+const WHITELABEL_BASE = "https://live.uzeed.mx";
 const REFRESH_MS = 60_000;
 
 function formatViewers(n: number): string {

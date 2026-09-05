@@ -25,7 +25,7 @@ export default function ProfilePreviewPage() {
           <div className="absolute inset-x-0 bottom-0 p-4">
             <div className="rounded-3xl border border-white/20 bg-white/10 p-4 backdrop-blur-xl">
               <h1 className="text-3xl font-semibold tracking-tight">Valentina, 27</h1>
-              <p className="mt-1 text-sm tracking-wide text-white/80">Las Condes • Elite companion</p>
+              <p className="mt-1 text-sm tracking-wide text-white/80">Polanco • Elite companion</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {['Elegante', 'Discreta', 'Bilingüe'].map((tag) => (
                   <span key={tag} className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs">

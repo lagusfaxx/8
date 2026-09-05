@@ -248,7 +248,7 @@ export default function AdminChatsPage() {
                           )}
                           <p className="mt-0.5 text-[10px] text-white/30">
                             {c.messageCount} mensajes ·{" "}
-                            {new Date(c.lastMessageAt).toLocaleString("es-CL")}
+                            {new Date(c.lastMessageAt).toLocaleString("es-MX")}
                           </p>
                         </div>
                       </div>
@@ -350,7 +350,7 @@ export default function AdminChatsPage() {
                                 {m.body}
                               </p>
                               <p className="mt-1 text-right text-[9px] text-white/30">
-                                {new Date(m.createdAt).toLocaleString("es-CL")}
+                                {new Date(m.createdAt).toLocaleString("es-MX")}
                                 {m.readAt ? " · leído" : ""}
                               </p>
                             </div>

@@ -532,7 +532,7 @@ export default function AdminIndex() {
                     rows={overview.topProfessionalsByViews.slice(0, 8).map((p) => ({
                       label: p.displayName || p.username,
                       sub: [p.city || "", p.tier || ""].filter(Boolean).join(" · "),
-                      value: `${p.profileViews.toLocaleString("es-CL")} vistas`,
+                      value: `${p.profileViews.toLocaleString("es-MX")} vistas`,
                     }))}
                     emptyText="Sin datos todavía"
                   />
@@ -545,7 +545,7 @@ export default function AdminIndex() {
                       .map((w) => ({
                         label: w.displayName || w.username || "—",
                         sub: w.profileType || "",
-                        value: `${(w.totalEarnedTokens || 0).toLocaleString("es-CL")} tk`,
+                        value: `${(w.totalEarnedTokens || 0).toLocaleString("es-MX")} tk`,
                       }))}
                     emptyText="Aún no hay tokens generados"
                   />
@@ -799,8 +799,8 @@ function OverviewKPI({
   };
   const c = colors[accent] || colors.fuchsia;
   const display = money
-    ? `$${(value || 0).toLocaleString("es-CL")}`
-    : (value || 0).toLocaleString("es-CL");
+    ? `$${(value || 0).toLocaleString("es-MX")}`
+    : (value || 0).toLocaleString("es-MX");
   return (
     <div className={`rounded-xl border ${c.bg} p-3 sm:p-4`}>
       <Icon className={`h-4 w-4 ${c.icon} mb-2`} />
@@ -843,7 +843,7 @@ function MiniMetric({
         <span className="text-[11px] text-white/45 truncate">{label}</span>
       </div>
       <div className="flex items-end justify-between gap-2">
-        <span className="text-lg font-bold tabular-nums">{value.toLocaleString("es-CL")}</span>
+        <span className="text-lg font-bold tabular-nums">{value.toLocaleString("es-MX")}</span>
         {showDelta && (
           <span
             className={`flex items-center gap-0.5 text-[10px] font-semibold ${

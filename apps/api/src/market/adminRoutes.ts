@@ -423,7 +423,7 @@ marketAdminRouter.put("/admin/market/withdrawals/:id", requireAdmin, asyncHandle
     body:
       nextStatus === "REJECTED"
         ? str(req.body?.note, 200) || "Revisa tus datos bancarios e inténtalo de nuevo."
-        : `Monto: $${withdrawal.amountClp.toLocaleString("es-CL")}`,
+        : `Monto: $${withdrawal.amountClp.toLocaleString("es-MX")}`,
     url: "/marketplace/vender?tab=ganancias",
     amountClp: withdrawal.amountClp,
   });

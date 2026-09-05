@@ -2,35 +2,39 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 
-export type ChileanCity = {
+export type MexicanCity = {
   name: string;
   lat: number;
   lng: number;
   region: string;
 };
 
-export const CHILEAN_CITIES: ChileanCity[] = [
-  { name: "Santiago", lat: -33.45, lng: -70.66, region: "Metropolitana" },
-  { name: "Viña del Mar", lat: -33.02, lng: -71.55, region: "Valparaíso" },
-  { name: "Valparaíso", lat: -33.05, lng: -71.62, region: "Valparaíso" },
-  { name: "Concepción", lat: -36.83, lng: -73.05, region: "Biobío" },
-  { name: "Antofagasta", lat: -23.65, lng: -70.40, region: "Antofagasta" },
-  { name: "Temuco", lat: -38.74, lng: -72.60, region: "Araucanía" },
-  { name: "Rancagua", lat: -34.17, lng: -70.74, region: "O'Higgins" },
-  { name: "La Serena", lat: -29.91, lng: -71.25, region: "Coquimbo" },
-  { name: "Arica", lat: -18.47, lng: -70.31, region: "Arica y Parinacota" },
-  { name: "Iquique", lat: -20.21, lng: -70.15, region: "Tarapacá" },
-  { name: "Puerto Montt", lat: -41.47, lng: -72.94, region: "Los Lagos" },
-  { name: "Talca", lat: -35.43, lng: -71.66, region: "Maule" },
-  { name: "Chillán", lat: -36.63, lng: -72.10, region: "Ñuble" },
-  { name: "Osorno", lat: -40.57, lng: -73.14, region: "Los Lagos" },
-  { name: "Punta Arenas", lat: -53.15, lng: -70.92, region: "Magallanes" },
-  { name: "Copiapó", lat: -27.37, lng: -70.33, region: "Atacama" },
-  { name: "Calama", lat: -22.46, lng: -68.93, region: "Antofagasta" },
-  { name: "Los Ángeles", lat: -37.47, lng: -72.35, region: "Biobío" },
-  { name: "Curicó", lat: -34.98, lng: -71.24, region: "Maule" },
-  { name: "Providencia", lat: -33.43, lng: -70.61, region: "Metropolitana" },
-  { name: "Las Condes", lat: -33.41, lng: -70.59, region: "Metropolitana" },
+export const MEXICAN_CITIES: MexicanCity[] = [
+  { name: "Ciudad de México", lat: 19.43, lng: -99.13, region: "CDMX" },
+  { name: "Polanco", lat: 19.43, lng: -99.19, region: "CDMX" },
+  { name: "Condesa", lat: 19.41, lng: -99.17, region: "CDMX" },
+  { name: "Roma Norte", lat: 19.42, lng: -99.16, region: "CDMX" },
+  { name: "Santa Fe", lat: 19.36, lng: -99.26, region: "CDMX" },
+  { name: "Coyoacán", lat: 19.35, lng: -99.16, region: "CDMX" },
+  { name: "Guadalajara", lat: 20.67, lng: -103.35, region: "Jalisco" },
+  { name: "Zapopan", lat: 20.72, lng: -103.39, region: "Jalisco" },
+  { name: "Monterrey", lat: 25.69, lng: -100.32, region: "Nuevo León" },
+  { name: "San Pedro Garza García", lat: 25.66, lng: -100.40, region: "Nuevo León" },
+  { name: "Puebla", lat: 19.04, lng: -98.20, region: "Puebla" },
+  { name: "Querétaro", lat: 20.59, lng: -100.39, region: "Querétaro" },
+  { name: "León", lat: 21.12, lng: -101.68, region: "Guanajuato" },
+  { name: "Tijuana", lat: 32.51, lng: -117.04, region: "Baja California" },
+  { name: "Ciudad Juárez", lat: 31.74, lng: -106.49, region: "Chihuahua" },
+  { name: "Mérida", lat: 20.97, lng: -89.62, region: "Yucatán" },
+  { name: "Cancún", lat: 21.16, lng: -86.85, region: "Quintana Roo" },
+  { name: "Playa del Carmen", lat: 20.63, lng: -87.07, region: "Quintana Roo" },
+  { name: "Puerto Vallarta", lat: 20.65, lng: -105.22, region: "Jalisco" },
+  { name: "Acapulco", lat: 16.86, lng: -99.88, region: "Guerrero" },
+  { name: "Toluca", lat: 19.29, lng: -99.66, region: "Estado de México" },
+  { name: "Culiacán", lat: 24.81, lng: -107.39, region: "Sinaloa" },
+  { name: "Hermosillo", lat: 29.07, lng: -110.96, region: "Sonora" },
+  { name: "San Luis Potosí", lat: 22.16, lng: -100.98, region: "San Luis Potosí" },
+  { name: "Veracruz", lat: 19.17, lng: -96.13, region: "Veracruz" },
 ];
 
 export const PROFILE_CATEGORIES = [
@@ -45,7 +49,7 @@ export const PROFILE_CATEGORIES = [
 
 export type LocationFilterState = {
   mode: "gps" | "city";
-  selectedCity: ChileanCity | null;
+  selectedCity: MexicanCity | null;
   selectedCategory: string | null;
   gpsLocation: [number, number] | null;
 };
@@ -73,7 +77,7 @@ function writeStored(state: Partial<LocationFilterState>) {
 
 export type LocationFilterContextValue = {
   state: LocationFilterState;
-  setCity: (city: ChileanCity | null) => void;
+  setCity: (city: MexicanCity | null) => void;
   setCategory: (cat: string | null) => void;
   setGps: (loc: [number, number]) => void;
   useCurrentLocation: () => void;
@@ -108,7 +112,7 @@ export function useLocationFilterState(): LocationFilterContextValue {
     }
   }, []);
 
-  const setCity = useCallback((city: ChileanCity | null) => {
+  const setCity = useCallback((city: MexicanCity | null) => {
     setState((prev) => {
       const next = { ...prev, mode: city ? "city" as const : "gps" as const, selectedCity: city };
       writeStored(next);

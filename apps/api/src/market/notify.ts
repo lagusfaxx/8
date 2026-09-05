@@ -36,5 +36,5 @@ export function absoluteUrl(path: string): string {
 }
 
 export function formatClp(value: number): string {
-  return `$${Math.round(value || 0).toLocaleString("es-CL")}`;
+  return `$${Math.round(value || 0).toLocaleString("es-MX")}`;
 }

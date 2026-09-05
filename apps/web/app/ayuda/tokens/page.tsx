@@ -22,7 +22,7 @@ export default function AyudaTokensPage() {
       <Section title="¿Qué son los tokens?">
         <p>
           Los tokens son la unidad interna de valor de UZEED. Se compran desde
-          tu billetera con pesos chilenos y se gastan dentro de la plataforma
+          tu billetera con pesos mexicanos y se gastan dentro de la plataforma
           en cualquier funcionalidad pagada. Son una forma segura y rápida de
           operar sin compartir tus datos de tarjeta cada vez que consumes un
           servicio.
@@ -31,7 +31,7 @@ export default function AyudaTokensPage() {
 
       <Section title="¿Cuánto vale un token?">
         <p>
-          Por defecto, <strong>1 token = $1.000 CLP</strong>. El valor exacto
+          Por defecto, <strong>1 token = $1.000 MXN</strong>. El valor exacto
           siempre se muestra en la pantalla de recarga y puede variar si activas
           una promoción o compras paquetes grandes con descuento.
         </p>

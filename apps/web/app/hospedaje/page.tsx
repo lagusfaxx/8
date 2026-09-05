@@ -3,16 +3,16 @@ import LodgingClient from "./LodgingClient";
 import SeoContent from "../../components/SeoContent";
 
 export const metadata: Metadata = {
-  title: "Hospedajes y Alojamientos en Chile",
+  title: "Hospedajes y Alojamientos en México",
   description:
-    "Encuentra hospedajes, cabañas y alojamientos discretos en Santiago y todo Chile. Precios, fotos reales y disponibilidad en UZEED.",
+    "Encuentra hospedajes y alojamientos discretos en CDMX, Guadalajara, Cancún y todo México. Precios, fotos reales y disponibilidad en UZEED.",
   alternates: { canonical: "/hospedaje" },
   openGraph: {
-    title: "Hospedajes y Alojamientos en Chile | UZEED",
-    description: "Hospedajes y alojamientos discretos en Santiago y todo Chile.",
-    url: "https://uzeed.cl/hospedaje",
+    title: "Hospedajes y Alojamientos en México | UZEED",
+    description: "Hospedajes y alojamientos discretos en CDMX y todo México.",
+    url: "https://uzeed.mx/hospedaje",
     type: "website",
-    images: [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Hospedajes" }],
+    images: [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Hospedajes" }],
   },
 };
 

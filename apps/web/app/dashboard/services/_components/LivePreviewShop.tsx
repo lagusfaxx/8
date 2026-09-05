@@ -117,7 +117,7 @@ function LivePreviewShop({ state, user }: Props) {
                   </div>
                   <div className="p-3">
                     <p className="text-xs font-medium text-white/70 line-clamp-1">{p.name}</p>
-                    <p className="text-sm font-bold text-white mt-1">${p.price?.toLocaleString("es-CL") ?? 0}</p>
+                    <p className="text-sm font-bold text-white mt-1">${p.price?.toLocaleString("es-MX") ?? 0}</p>
                   </div>
                 </div>
               );

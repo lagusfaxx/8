@@ -356,8 +356,8 @@ export default function LoginClient() {
         {/* Support */}
         <p className="mt-4 text-center text-xs text-white/30">
           ¿Problemas para ingresar?{" "}
-          <a href="mailto:soporte@uzeed.cl" className="text-white/50 hover:text-white/70 underline transition">
-            soporte@uzeed.cl
+          <a href="mailto:soporte@uzeed.mx" className="text-white/50 hover:text-white/70 underline transition">
+            soporte@uzeed.mx
           </a>
         </p>
       </div>

@@ -37,7 +37,7 @@ type Subscription = {
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function daysRemaining(iso: string) {
@@ -162,7 +162,7 @@ export default function MySubscriptionsPage() {
                   </Link>
                   <div className="shrink-0 text-right">
                     <p className="text-xs text-white/30">Tarifa mensual</p>
-                    <p className="text-base font-extrabold text-white">${sub.priceCLP.toLocaleString("es-CL")}</p>
+                    <p className="text-base font-extrabold text-white">${sub.priceCLP.toLocaleString("es-MX")}</p>
                   </div>
                 </div>
 

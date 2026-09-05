@@ -729,7 +729,7 @@ export default function ProfileDetailView({
         };
 
   const priceLabel = hasRatesSection
-    ? `$${professional.baseRate?.toLocaleString("es-CL")}`
+    ? `$${professional.baseRate?.toLocaleString("es-MX")}`
     : "Tarifa a consultar";
   const durationLabel = professional.minDurationMinutes
     ? `${professional.minDurationMinutes} min`

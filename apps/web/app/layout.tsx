@@ -11,44 +11,44 @@ export const metadata: Metadata = {
     template: '%s | UZEED',
   },
   applicationName: 'UZEED: Escorts y experiencias únicas para adultos',
-  description: 'Encuentra escorts, acompañantes y profesionales verificados en Santiago, Las Condes, Providencia y Viña del Mar. Fotos reales, contacto directo por WhatsApp y disponibilidad hoy en UZEED Chile.',
+  description: 'Encuentra escorts, acompañantes y profesionales verificados en Ciudad de México, Polanco, Guadalajara y Monterrey. Fotos reales, contacto directo por WhatsApp y disponibilidad hoy en UZEED México.',
   keywords: [
-    'escorts chile', 'acompañantes chile', 'escorts santiago', 'acompañantes santiago',
-    'escorts las condes', 'escorts providencia', 'escorts viña del mar',
-    'putas santiago', 'putas chile', 'servicios para adultos chile', 'escorts verificadas',
-    'masajistas chile', 'moteles chile', 'sexshop chile',
-    'escorts colombianas santiago', 'escorts venezolanas santiago',
+    'escorts mexico', 'acompañantes mexico', 'escorts cdmx', 'acompañantes cdmx',
+    'escorts polanco', 'escorts condesa', 'escorts guadalajara', 'escorts monterrey',
+    'putas cdmx', 'putas mexico', 'servicios para adultos mexico', 'escorts verificadas',
+    'masajistas mexico', 'moteles mexico', 'sexshop mexico',
+    'escorts colombianas cdmx', 'escorts venezolanas cdmx',
     'escorts cerca de mi', 'acompañantes cerca de mi',
     'escorts disponibles hoy', 'putas verificadas',
   ],
   manifest: '/manifest.webmanifest',
-  metadataBase: new URL('https://uzeed.cl'),
+  metadataBase: new URL('https://uzeed.mx'),
   alternates: {
     canonical: '/',
     languages: {
-      'es-CL': 'https://uzeed.cl',
+      'es-MX': 'https://uzeed.mx',
     },
   },
   openGraph: {
     type: 'website',
-    locale: 'es_CL',
-    url: 'https://uzeed.cl',
+    locale: 'es_MX',
+    url: 'https://uzeed.mx',
     siteName: 'UZEED: Escorts y experiencias únicas para adultos',
-    title: 'UZEED: Escorts, Acompañantes y Profesionales en Chile',
-    description: 'Encuentra escorts, acompañantes y profesionales verificados en Santiago, Las Condes y Viña del Mar. Fotos reales, contacto directo y disponibilidad hoy.',
+    title: 'UZEED: Escorts, Acompañantes y Profesionales en México',
+    description: 'Encuentra escorts, acompañantes y profesionales verificados en Ciudad de México, Polanco, Guadalajara y Monterrey. Fotos reales, contacto directo y disponibilidad hoy.',
     images: [
       {
         url: '/brand/isotipo-new.png',
         width: 720,
         height: 720,
-        alt: 'UZEED - Escorts y Profesionales Verificados en Chile',
+        alt: 'UZEED - Escorts y Profesionales Verificados en México',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'UZEED: Escorts y Acompañantes Verificadas en Chile',
-    description: 'Encuentra escorts, acompañantes y profesionales verificados en Santiago y todo Chile. Fotos reales y disponibilidad hoy.',
+    title: 'UZEED: Escorts y Acompañantes Verificadas en México',
+    description: 'Encuentra escorts, acompañantes y profesionales verificados en Ciudad de México y todo México. Fotos reales y disponibilidad hoy.',
     images: ['/brand/isotipo-new.png'],
   },
   robots: {
@@ -102,37 +102,42 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'WebSite',
-      '@id': 'https://uzeed.cl/#website',
-      url: 'https://uzeed.cl',
+      '@id': 'https://uzeed.mx/#website',
+      url: 'https://uzeed.mx',
       name: 'UZEED: Escorts y experiencias únicas para adultos',
       alternateName: 'UZEED',
-      description: 'Directorio N°1 de escorts, acompañantes y profesionales verificados en Chile. Perfiles con fotos reales, contacto directo y disponibilidad hoy.',
-      inLanguage: 'es-CL',
+      description: 'Directorio N°1 de escorts, acompañantes y profesionales verificados en México. Perfiles con fotos reales, contacto directo y disponibilidad hoy.',
+      inLanguage: 'es-MX',
       potentialAction: {
         '@type': 'SearchAction',
         target: {
           '@type': 'EntryPoint',
-          urlTemplate: 'https://uzeed.cl/escorts?q={search_term_string}',
+          urlTemplate: 'https://uzeed.mx/escorts?q={search_term_string}',
         },
         'query-input': 'required name=search_term_string',
       },
     },
     {
       '@type': 'Organization',
-      '@id': 'https://uzeed.cl/#organization',
+      '@id': 'https://uzeed.mx/#organization',
       name: 'UZEED',
-      url: 'https://uzeed.cl',
+      url: 'https://uzeed.mx',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://uzeed.cl/brand/isotipo-new.png',
+        url: 'https://uzeed.mx/brand/isotipo-new.png',
         width: 720,
         height: 720,
       },
       contactPoint: {
         '@type': 'ContactPoint',
         contactType: 'customer service',
-        url: 'https://uzeed.cl/contacto',
+        url: 'https://uzeed.mx/contacto',
         availableLanguage: 'Spanish',
+        areaServed: 'MX',
+      },
+      areaServed: {
+        '@type': 'Country',
+        name: 'México',
       },
       sameAs: [],
     },
@@ -141,13 +146,13 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es">
+    <html lang="es-MX">
       <head>
         {/* Preconnect to third-party origins to reduce DNS+TLS latency */}
         <link rel="preconnect" href="https://www.googletagmanager.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
-        <link rel="preconnect" href="https://api.uzeed.cl" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://api.uzeed.cl" />
+        <link rel="preconnect" href="https://api.uzeed.mx" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://api.uzeed.mx" />
         <link rel="dns-prefetch" href="https://static.cloudflareinsights.com" />
         {/* Preload critical background image so browser fetches it early (LCP improvement) */}
         <link rel="preload" as="image" href="/brand/bg.webp" type="image/webp" fetchPriority="high" />

@@ -310,7 +310,7 @@ async function extendUmateDirectSubFromWebhook(flowSubscriptionId: string, sourc
           ivaAmount,
           creatorPayout,
           netAmount: creatorPayout,
-          description: `Renovación PAC — $${gross.toLocaleString("es-CL")} CLP`,
+          description: `Renovación PAC — $${gross.toLocaleString("es-MX")} CLP`,
           referenceId: umateSub.id,
           referenceType: "direct_subscription",
         },
