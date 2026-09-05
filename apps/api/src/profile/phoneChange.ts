@@ -19,7 +19,7 @@ import { emitAdminEvent } from "../lib/adminEvents";
 export const phoneChangeRouter = Router();
 
 export const PROFESSIONAL_PHONE_REGEX =
-  /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
+  /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
 
 /** Dos números son el mismo aunque estén escritos con distintos espacios. */
 export function samePhone(a: string | null | undefined, b: string | null | undefined): boolean {
@@ -92,7 +92,7 @@ phoneChangeRouter.post(
     if (!PROFESSIONAL_PHONE_REGEX.test(requestedPhone)) {
       return res.status(400).json({
         error: "PHONE_INVALID",
-        message: "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+        message: "Ingresa un número válido con código de país (+52, +57, +58 o +51).",
       });
     }
     if (samePhone(requestedPhone, user.phone)) {

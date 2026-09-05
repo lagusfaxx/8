@@ -216,8 +216,8 @@ export default function SexShopProfileClient() {
 
   function chatDraftFromCart() {
     if (!cart.length) return "Hola, me interesa un producto de tu tienda.";
-    const lines = cart.map((c) => `- ${c.name} x${c.qty} ($${(c.price * c.qty).toLocaleString("es-CL")})`).join("\n");
-    return `Hola, quiero enviar este pedido:\n${lines}\nTotal referencial: $${total.toLocaleString("es-CL")}\n(Coordinemos entrega y pago por aquí).`;
+    const lines = cart.map((c) => `- ${c.name} x${c.qty} ($${(c.price * c.qty).toLocaleString("es-MX")})`).join("\n");
+    return `Hola, quiero enviar este pedido:\n${lines}\nTotal referencial: $${total.toLocaleString("es-MX")}\n(Coordinemos entrega y pago por aquí).`;
   }
 
   async function submitOrder() {
@@ -562,7 +562,7 @@ export default function SexShopProfileClient() {
                         <div className="flex flex-col">
                           <span className="text-[10px] uppercase tracking-wider text-white/40">Precio</span>
                           <p className="text-lg font-bold text-white">
-                            ${p.price.toLocaleString("es-CL")}
+                            ${p.price.toLocaleString("es-MX")}
                           </p>
                         </div>
 
@@ -639,7 +639,7 @@ export default function SexShopProfileClient() {
               </span>
               <span className="font-semibold">Ver carrito</span>
             </div>
-            <span className="text-lg font-bold">${total.toLocaleString("es-CL")}</span>
+            <span className="text-lg font-bold">${total.toLocaleString("es-MX")}</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -728,7 +728,7 @@ export default function SexShopProfileClient() {
                 <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                   <div>
                     <span className="text-xs text-white/40">Precio</span>
-                    <p className="text-2xl font-bold">${selectedProduct.price.toLocaleString("es-CL")}</p>
+                    <p className="text-2xl font-bold">${selectedProduct.price.toLocaleString("es-MX")}</p>
                   </div>
                   <div className="text-right">
                     <span className="text-xs text-white/40">Disponible</span>
@@ -809,7 +809,7 @@ export default function SexShopProfileClient() {
                 <div className="flex-1 min-w-0">
                   <p className="mb-0.5 truncate font-semibold text-white">{c.name}</p>
                   <p className="text-xs text-white/40">{c.category}</p>
-                  <p className="mt-0.5 text-sm text-white/60">${c.price.toLocaleString("es-CL")} c/u</p>
+                  <p className="mt-0.5 text-sm text-white/60">${c.price.toLocaleString("es-MX")} c/u</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -831,7 +831,7 @@ export default function SexShopProfileClient() {
                   </button>
                 </div>
                 <p className="w-20 text-right text-sm font-semibold text-fuchsia-400">
-                  ${(c.price * c.qty).toLocaleString("es-CL")}
+                  ${(c.price * c.qty).toLocaleString("es-MX")}
                 </p>
               </div>
             ))
@@ -853,7 +853,7 @@ export default function SexShopProfileClient() {
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-xs text-white/50">Total ({cartItemsCount} {cartItemsCount === 1 ? "item" : "items"})</span>
-                  <p className="text-2xl font-bold">${total.toLocaleString("es-CL")}</p>
+                  <p className="text-2xl font-bold">${total.toLocaleString("es-MX")}</p>
                 </div>
                 <button
                   onClick={() => setCart([])}
@@ -899,7 +899,7 @@ export default function SexShopProfileClient() {
 
             <div className="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/5 p-4">
               <span className="text-xs text-white/50">Total a pagar</span>
-              <p className="text-2xl font-bold">${total.toLocaleString("es-CL")}</p>
+              <p className="text-2xl font-bold">${total.toLocaleString("es-MX")}</p>
               <p className="text-xs text-white/40">{cartItemsCount} {cartItemsCount === 1 ? "producto" : "productos"}</p>
             </div>
 
@@ -909,7 +909,7 @@ export default function SexShopProfileClient() {
                 className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-fuchsia-500/40 focus:ring-1 focus:ring-fuchsia-500/20"
                 value={deliveryAddress}
                 onChange={(e) => setDeliveryAddress(e.target.value)}
-                placeholder="Calle, número, comuna"
+                placeholder="Calle, número, colonia"
               />
             </div>
             <div>
@@ -918,7 +918,7 @@ export default function SexShopProfileClient() {
                 className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-white/20 outline-none transition focus:border-fuchsia-500/40 focus:ring-1 focus:ring-fuchsia-500/20"
                 value={deliveryPhone}
                 onChange={(e) => setDeliveryPhone(e.target.value)}
-                placeholder="+56 9 1234 5678"
+                placeholder="+52 55 1234 5678"
               />
             </div>
             <div>
@@ -972,7 +972,7 @@ export default function SexShopProfileClient() {
               ) : (
                 <>
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Confirmar pedido · ${total.toLocaleString("es-CL")}
+                  Confirmar pedido · ${total.toLocaleString("es-MX")}
                 </>
               )}
             </button>
@@ -996,7 +996,7 @@ export default function SexShopProfileClient() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-white/50">Total</span>
-                <span className="font-semibold">${Number(orderResult.totalclp || orderResult.totalClp || 0).toLocaleString("es-CL")}</span>
+                <span className="font-semibold">${Number(orderResult.totalclp || orderResult.totalClp || 0).toLocaleString("es-MX")}</span>
               </div>
               {orderResult.paymentmethod && (
                 <div className="flex justify-between text-sm">

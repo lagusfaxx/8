@@ -105,7 +105,7 @@ export default function PhoneField({
         value={value}
         onChange={onChange}
         type="tel"
-        placeholder="+56 9 1234 5678"
+        placeholder="+52 55 1234 5678"
         hint="Es el número que verán tus clientes. Una vez guardado, cambiarlo requiere aprobación."
       />
     );
@@ -186,8 +186,8 @@ export default function PhoneField({
                 value={newPhone}
                 onChange={setNewPhone}
                 type="tel"
-                placeholder="+56 9 1234 5678"
-                hint="Con código de país (+56, +57, +58 o +51)."
+                placeholder="+52 55 1234 5678"
+                hint="Con código de país (+52, +57, +58 o +51)."
               />
               <div className="grid gap-1.5">
                 <label className="text-[11px] font-medium uppercase tracking-wide text-white/40">

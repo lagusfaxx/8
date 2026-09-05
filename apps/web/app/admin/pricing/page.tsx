@@ -118,7 +118,7 @@ export default function AdminPricingPage() {
         <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs text-white/60 border-b border-white/10">
           <div className="col-span-2">Tipo</div>
           <div className="col-span-2">Tier</div>
-          <div className="col-span-3">Precio CLP</div>
+          <div className="col-span-3">Precio MXN</div>
           <div className="col-span-2">Días</div>
           <div className="col-span-2">Activo</div>
           <div className="col-span-1"></div>

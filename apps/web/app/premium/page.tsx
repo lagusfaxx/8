@@ -114,7 +114,7 @@ export default function PremiumPage() {
                 </div>
 
                 <div className="space-y-1 text-xs text-white/65">
-                  <p>{profile.city || "Chile"}</p>
+                  <p>{profile.city || "México"}</p>
                   {profile.serviceCategory ? <p>{profile.serviceCategory}</p> : null}
                   <p>{profile.completedServices} servicios completados</p>
                   <p>{profile.profileViews} visitas de perfil</p>

@@ -439,7 +439,7 @@ export default function VideocallRoomPage() {
               <div className="text-left">
                 <p className="text-sm font-semibold">{remotePerson?.displayName || remotePerson?.username}</p>
                 <p className="text-[11px] text-white/40">
-                  {scheduled.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" })} {scheduled.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })} · {booking.durationMinutes} min
+                  {scheduled.toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })} {scheduled.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} · {booking.durationMinutes} min
                 </p>
               </div>
             </div>
@@ -545,7 +545,7 @@ export default function VideocallRoomPage() {
                 <p className="text-sm font-medium text-white/70">Estableciendo conexión...</p>
                 <p className="mt-1 text-[10px] text-white/30">
                   {connectingElapsed > 0 && `${formatTime(connectingElapsed)} · `}
-                  El tiempo empieza a las {booking ? new Date(booking.scheduledAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) : ""}
+                  El tiempo empieza a las {booking ? new Date(booking.scheduledAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : ""}
                 </p>
               </div>
             )}

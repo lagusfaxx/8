@@ -51,7 +51,7 @@ function formatBytes(n: number) {
 
 function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString("es-CL", {
+    return new Date(iso).toLocaleDateString("es-MX", {
       day: "numeric",
       month: "short",
       year: "numeric",

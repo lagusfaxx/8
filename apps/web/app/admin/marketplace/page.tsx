@@ -485,7 +485,7 @@ function ShippingTab({ onError, onNotice }: { onError: (v: string | null) => voi
         <h2 className="text-sm font-semibold text-white/70">Agregar región</h2>
         <div className="mt-3 grid gap-2 sm:grid-cols-4">
           <input value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Región" className={inputClass} />
-          <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio CLP" type="number" className={inputClass} />
+          <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Precio MXN" type="number" className={inputClass} />
           <input value={eta} onChange={(e) => setEta(e.target.value)} placeholder="2 a 4 días hábiles" className={inputClass} />
           <button type="button" disabled={busy || !region} onClick={create} className="rounded-xl bg-fuchsia-500/20 px-4 py-2.5 text-sm font-semibold text-fuchsia-200 disabled:opacity-40">
             Agregar
@@ -721,8 +721,8 @@ function SettingsTab({
         <div className="grid gap-3 sm:grid-cols-2">
           <NumberField label="Comisión UZEED (%)" value={form.commissionPercent} onChange={(v) => update({ commissionPercent: v })} />
           <NumberField label="Días de retención del pago" value={form.holdDays} onChange={(v) => update({ holdDays: v })} />
-          <NumberField label="Precio mínimo (CLP)" value={form.minPriceClp} onChange={(v) => update({ minPriceClp: v })} />
-          <NumberField label="Precio máximo (CLP)" value={form.maxPriceClp} onChange={(v) => update({ maxPriceClp: v })} />
+          <NumberField label="Precio mínimo (MXN)" value={form.minPriceClp} onChange={(v) => update({ minPriceClp: v })} />
+          <NumberField label="Precio máximo (MXN)" value={form.maxPriceClp} onChange={(v) => update({ maxPriceClp: v })} />
         </div>
         <div className="flex flex-wrap gap-3">
           <Check label="Marketplace activo" checked={form.isEnabled} onChange={(v) => update({ isEnabled: v })} />

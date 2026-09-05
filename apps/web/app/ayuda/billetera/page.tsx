@@ -54,8 +54,8 @@ export default function AyudaBilleteraPage() {
 
       <Section title="Cómo se calcula el valor de los tokens">
         <p>
-          La equivalencia entre tokens y pesos chilenos se muestra directamente
-          en tu billetera. Por defecto, <strong>1 token equivale a $1.000 CLP</strong>,
+          La equivalencia entre tokens y pesos mexicanos se muestra directamente
+          en tu billetera. Por defecto, <strong>1 token equivale a $1.000 MXN</strong>,
           pero puede ajustarse en promociones o descuentos por paquetes grandes.
           El valor vigente siempre aparece en pantalla antes de confirmar la
           recarga.
@@ -84,7 +84,7 @@ export default function AyudaBilleteraPage() {
           steps={[
             {
               title: "Solicita un retiro",
-              body: "Desde la billetera, presiona “Retirar” e indica cuántos tokens quieres convertir a CLP.",
+              body: "Desde la billetera, presiona “Retirar” e indica cuántos tokens quieres convertir a MXN.",
             },
             {
               title: "Ingresa tus datos bancarios",

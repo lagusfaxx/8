@@ -93,7 +93,7 @@ const TOTAL_STEPS = 3;
 /* Mismo tope que valida la API (`DISPLAY_NAME_MAX_LENGTH` en @uzeed/shared). */
 const DISPLAY_NAME_MIN_LENGTH = 2;
 const DISPLAY_NAME_MAX_LENGTH = 20;
-const PHONE_PREFIXES = ["+56", "+57", "+58", "+51"];
+const PHONE_PREFIXES = ["+52", "+57", "+58", "+51"];
 const MAX_GALLERY = 6;
 
 export default function PublicateClient() {
@@ -444,9 +444,9 @@ export default function PublicateClient() {
             <h2 className="text-base font-semibold text-white">Tarifas</h2>
             <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Tarifa base (CLP) *</label>
+                <label className={labelClass}>Tarifa base (MXN) *</label>
                 <input type="number" className={inputClass} placeholder="Ej: 50000" min={1000} step={1000} value={data.baseRate} onChange={(e) => update({ baseRate: e.target.value })} />
-                <p className="mt-1 text-[10px] text-white/35">Mínimo $1.000 CLP. Recuerda usar el monto completo (ej: 40000, no 40).</p>
+                <p className="mt-1 text-[10px] text-white/35">Mínimo $1.000 MXN. Recuerda usar el monto completo (ej: 40000, no 40).</p>
               </div>
               <div>
                 <label className={labelClass}>Duración mín. (min)</label>
@@ -472,7 +472,7 @@ export default function PublicateClient() {
               <MapboxAddressAutocomplete
                 label=""
                 value={data.address}
-                placeholder="Ej: Providencia, Santiago"
+                placeholder="Ej: Polanco, CDMX"
                 required
                 onChange={(v) => update({ address: v })}
                 onSelect={(s) => update({ address: s.placeName, latitude: s.latitude, longitude: s.longitude })}
@@ -588,7 +588,7 @@ export default function PublicateClient() {
               <div className="flex gap-2">
                 <select
                   className="w-20 shrink-0 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-3 text-sm text-white outline-none transition-colors focus:border-fuchsia-500/40 [color-scheme:dark]"
-                  value={data.phone.match(/^\+\d{2}/)?.[0] || "+56"}
+                  value={data.phone.match(/^\+\d{2}/)?.[0] || "+52"}
                   onChange={(e) => {
                     const digits = data.phone.replace(/^\+\d{2}/, "");
                     update({ phone: e.target.value + digits });
@@ -605,7 +605,7 @@ export default function PublicateClient() {
                   value={data.phone.replace(/^\+\d{2}/, "")}
                   onChange={(e) => {
                     const digits = e.target.value.replace(/\D/g, "");
-                    const prefix = data.phone.match(/^\+\d{2}/)?.[0] || "+56";
+                    const prefix = data.phone.match(/^\+\d{2}/)?.[0] || "+52";
                     update({ phone: prefix + digits });
                   }}
                 />

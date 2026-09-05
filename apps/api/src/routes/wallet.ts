@@ -371,7 +371,7 @@ walletRouter.post("/wallet/withdraw", requireAuth, withdrawLimiter, async (req, 
         type: "WITHDRAWAL",
         amount: -tokens,
         balance: updatedWallet.balance,
-        description: `Solicitud de retiro: ${tokens} tokens ($${clpAmount.toLocaleString("es-CL")} CLP)`,
+        description: `Solicitud de retiro: ${tokens} tokens ($${clpAmount.toLocaleString("es-MX")} CLP)`,
       },
     });
 

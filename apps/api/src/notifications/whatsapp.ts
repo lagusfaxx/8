@@ -19,7 +19,7 @@ const GRAPH_VERSION = process.env.WHATSAPP_GRAPH_VERSION || "v21.0";
 const TEMPLATE_NAME = process.env.WHATSAPP_TEMPLATE_NAME || "uzeed_notificacion";
 const TEMPLATE_LANG = process.env.WHATSAPP_TEMPLATE_LANG || "es";
 const MESSAGE_COOLDOWN_MIN = Number(process.env.WHATSAPP_MESSAGE_COOLDOWN_MIN || 30);
-const CHAT_URL = process.env.WHATSAPP_NOTIFY_URL || "https://uzeed.cl/chats";
+const CHAT_URL = process.env.WHATSAPP_NOTIFY_URL || "https://uzeed.mx/chats";
 
 export type WhatsAppProvider = "baileys" | "cloud" | null;
 
@@ -35,7 +35,7 @@ export function isWhatsAppConfigured(): boolean {
 
 /**
  * Normaliza un teléfono al formato wa (solo dígitos con código país).
- * Acepta formatos chilenos habituales: "+56 9 1234 5678", "912345678",
+ * Acepta formatos chilenos habituales: "+52 55 1234 5678", "912345678",
  * "09 1234 5678", "56912345678".
  */
 export function normalizePhoneForWhatsApp(raw: string | null | undefined): string | null {

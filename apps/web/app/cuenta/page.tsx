@@ -310,7 +310,7 @@ export default function AccountPage() {
                 ) : !isTrialPeriod ? (
                   <div className="flex items-center gap-3 pt-1">
                     <span className="text-xs text-white/50">
-                      ${(subscriptionStatus.subscriptionPrice || 4990).toLocaleString("es-CL")} CLP/mes
+                      ${(subscriptionStatus.subscriptionPrice || 4990).toLocaleString("es-MX")} MXN/mes
                     </span>
                     <button
                       onClick={handleSubscribe}
@@ -332,7 +332,7 @@ export default function AccountPage() {
                             payment.status === "PENDING" ? "bg-yellow-500" :
                             "bg-red-500"
                           }`} />
-                          {new Date(payment.createdAt).toLocaleDateString("es-CL")} · ${payment.amount.toLocaleString("es-CL")}
+                          {new Date(payment.createdAt).toLocaleDateString("es-MX")} · ${payment.amount.toLocaleString("es-MX")}
                         </span>
                       ))}
                     </div>

@@ -208,11 +208,11 @@ export default function AdminPhoneChangesPage() {
                   <p className="text-[11px] text-white/40">
                     @{r.user.username}
                     {r.user.city ? ` · ${r.user.city}` : ""} · registrada{" "}
-                    {new Date(r.user.createdAt).toLocaleDateString("es-CL")}
+                    {new Date(r.user.createdAt).toLocaleDateString("es-MX")}
                   </p>
                 </div>
                 <span className="text-[11px] text-white/30">
-                  {new Date(r.createdAt).toLocaleDateString("es-CL")}
+                  {new Date(r.createdAt).toLocaleDateString("es-MX")}
                 </span>
               </div>
 
@@ -272,7 +272,7 @@ export default function AdminPhoneChangesPage() {
                     : r.status === "REJECTED"
                       ? "Rechazada"
                       : "Retirada por la profesional"}
-                  {r.reviewedAt ? ` el ${new Date(r.reviewedAt).toLocaleDateString("es-CL")}` : ""}
+                  {r.reviewedAt ? ` el ${new Date(r.reviewedAt).toLocaleDateString("es-MX")}` : ""}
                   {r.reviewer ? ` por ${r.reviewer.displayName || r.reviewer.username}` : ""}
                   {r.adminNote ? ` · “${r.adminNote}”` : ""}
                 </p>

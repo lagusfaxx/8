@@ -93,7 +93,7 @@ export default function WalletPage() {
       <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/[0.08] to-emerald-500/[0.01] p-5 sm:p-6">
         <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400/80">Disponible para retirar</p>
         <p className="mt-2 text-4xl font-extrabold tracking-tight text-emerald-400 sm:text-5xl">
-          ${stats.availableBalance.toLocaleString("es-CL")}
+          ${stats.availableBalance.toLocaleString("es-MX")}
         </p>
         <p className="mt-1 text-xs text-white/40">Neto, ya descontado IVA y comisión.</p>
         <button
@@ -112,11 +112,11 @@ export default function WalletPage() {
             <Clock className="h-3.5 w-3.5 text-amber-400/80" />
             <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">Retenido</p>
           </div>
-          <p className="mt-1 text-xl font-bold text-white">${stats.pendingBalance.toLocaleString("es-CL")}</p>
+          <p className="mt-1 text-xl font-bold text-white">${stats.pendingBalance.toLocaleString("es-MX")}</p>
         </div>
         <div className="rounded-xl border border-white/[0.05] bg-white/[0.015] px-4 py-3">
           <p className="text-[11px] font-medium uppercase tracking-wider text-white/40">Total histórico</p>
-          <p className="mt-1 text-xl font-bold text-white">${stats.totalEarned.toLocaleString("es-CL")}</p>
+          <p className="mt-1 text-xl font-bold text-white">${stats.totalEarned.toLocaleString("es-MX")}</p>
         </div>
       </div>
 
@@ -141,11 +141,11 @@ export default function WalletPage() {
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium text-white/75">{entry.description || entry.type}</p>
-                      <p className="text-[11px] text-white/40">{new Date(entry.createdAt).toLocaleDateString("es-CL")}</p>
+                      <p className="text-[11px] text-white/40">{new Date(entry.createdAt).toLocaleDateString("es-MX")}</p>
                     </div>
                   </div>
                   <span className={`shrink-0 text-sm font-semibold ${entry.creatorPayout >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {entry.creatorPayout >= 0 ? "+" : "-"}${Math.abs(entry.creatorPayout).toLocaleString("es-CL")}
+                    {entry.creatorPayout >= 0 ? "+" : "-"}${Math.abs(entry.creatorPayout).toLocaleString("es-MX")}
                   </span>
                 </div>
               </div>
@@ -168,11 +168,11 @@ export default function WalletPage() {
                   {w.status === "PENDING" && <Clock className="h-4 w-4 shrink-0 text-amber-400" />}
                   {w.status === "REJECTED" && <XCircle className="h-4 w-4 shrink-0 text-red-400" />}
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-white/75">${w.amount.toLocaleString("es-CL")}</p>
+                    <p className="text-sm font-medium text-white/75">${w.amount.toLocaleString("es-MX")}</p>
                     <p className="truncate text-[11px] text-white/40">{w.bankName}</p>
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] text-white/40">{new Date(w.createdAt).toLocaleDateString("es-CL")}</span>
+                <span className="shrink-0 text-[11px] text-white/40">{new Date(w.createdAt).toLocaleDateString("es-MX")}</span>
               </div>
             ))}
           </div>
@@ -185,20 +185,20 @@ export default function WalletPage() {
         <div className="space-y-1.5 rounded-xl border border-white/[0.05] bg-white/[0.015] p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-white/50">Ingreso bruto</span>
-            <span className="font-semibold text-white">${totals.gross.toLocaleString("es-CL")}</span>
+            <span className="font-semibold text-white">${totals.gross.toLocaleString("es-MX")}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-white/50">IVA (19%)</span>
-            <span className="font-semibold text-red-400">-${totals.iva.toLocaleString("es-CL")}</span>
+            <span className="font-semibold text-red-400">-${totals.iva.toLocaleString("es-MX")}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-white/50">Comisión plataforma</span>
-            <span className="font-semibold text-red-400">-${totals.commission.toLocaleString("es-CL")}</span>
+            <span className="font-semibold text-red-400">-${totals.commission.toLocaleString("es-MX")}</span>
           </div>
           <div className="my-1 h-px bg-white/[0.06]" />
           <div className="flex items-center justify-between text-sm">
             <span className="font-semibold text-emerald-400/80">Neto ganado</span>
-            <span className="font-bold text-emerald-400">${totals.income.toLocaleString("es-CL")}</span>
+            <span className="font-bold text-emerald-400">${totals.income.toLocaleString("es-MX")}</span>
           </div>
         </div>
       </section>

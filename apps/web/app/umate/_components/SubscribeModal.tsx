@@ -42,7 +42,7 @@ export default function SubscribeModal({
 
   if (!open) return null;
 
-  const priceStr = `$${creator.monthlyPriceCLP.toLocaleString("es-CL")} CLP`;
+  const priceStr = `$${creator.monthlyPriceCLP.toLocaleString("es-MX")} MXN`;
 
   const handleContinue = async () => {
     setError(null);

@@ -220,7 +220,7 @@ export default function UmateAccountPage() {
           iconColor: "text-amber-400",
           label: "Tarifa mensual",
           desc: creatorFull?.monthlyPriceCLP
-            ? `$${creatorFull.monthlyPriceCLP.toLocaleString("es-CL")} / mes`
+            ? `$${creatorFull.monthlyPriceCLP.toLocaleString("es-MX")} / mes`
             : "Define tu precio de suscripción",
         },
       ],

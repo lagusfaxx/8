@@ -500,7 +500,7 @@ function KPICard({ icon: Icon, label, value, sub, accent }: {
   return (
     <div className={`rounded-xl border ${c.bg} p-3 sm:p-4`}>
       <Icon className={`h-4 w-4 ${c.icon} mb-2`} />
-      <p className="text-xl sm:text-2xl font-bold tabular-nums">{value.toLocaleString("es-CL")}</p>
+      <p className="text-xl sm:text-2xl font-bold tabular-nums">{value.toLocaleString("es-MX")}</p>
       <p className="text-[11px] text-white/40 mt-0.5 truncate">{label}</p>
       {sub && <p className="text-[10px] text-white/25 mt-0.5 truncate">{sub}</p>}
     </div>
@@ -524,7 +524,7 @@ function MiniCard({ icon: Icon, label, value, color }: {
         <Icon className={`h-3.5 w-3.5 ${colorMap[color] || "text-white/30"}`} />
       </div>
       <div className="min-w-0">
-        <p className="text-lg font-bold tabular-nums leading-tight">{value.toLocaleString("es-CL")}</p>
+        <p className="text-lg font-bold tabular-nums leading-tight">{value.toLocaleString("es-MX")}</p>
         <p className="text-[10px] text-white/35 truncate">{label}</p>
       </div>
     </div>
@@ -545,7 +545,7 @@ function ChartCard({ title, data, color }: {
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
       <div className="flex items-center justify-between border-b border-white/[0.04] px-4 py-3">
         <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-xs text-white/30 tabular-nums">{total.toLocaleString("es-CL")} total</span>
+        <span className="text-xs text-white/30 tabular-nums">{total.toLocaleString("es-MX")} total</span>
       </div>
       <div className="p-4">
         {data.length === 0 ? (
@@ -609,7 +609,7 @@ function ChartCard({ title, data, color }: {
             <div className="flex items-end gap-[3px]" style={{ height: 48 }}>
               {data.map((d) => {
                 const h = Math.max((d.count / max) * 100, 4);
-                const dayLabel = new Date(d.day + "T12:00:00").toLocaleDateString("es-CL", { day: "2-digit", month: "short" });
+                const dayLabel = new Date(d.day + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
                 return (
                   <div key={d.day} className="group relative flex flex-1 flex-col items-center gap-0.5">
                     <div
@@ -715,7 +715,7 @@ function RankingCard({ title, icon: Icon, items, color, emptyText }: {
                       <span className="block text-[12px] text-white/70 truncate">{item.label}</span>
                       {item.sub && <span className="block text-[10px] text-white/30 truncate">{item.sub}</span>}
                     </div>
-                    <span className="text-[12px] font-semibold text-white/50 tabular-nums">{item.value.toLocaleString("es-CL")}</span>
+                    <span className="text-[12px] font-semibold text-white/50 tabular-nums">{item.value.toLocaleString("es-MX")}</span>
                   </div>
                 </div>
               );

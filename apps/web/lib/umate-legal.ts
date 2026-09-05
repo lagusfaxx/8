@@ -52,7 +52,7 @@ export const TERMS_SECTIONS: Section[] = [
   {
     title: "6. Pagos, comisión e impuestos",
     paragraphs: [
-      "El precio de la suscripción es fijado por la Creadora dentro de los rangos permitidos. Los pagos se procesan vía Flow.cl en pesos chilenos (CLP) e incluyen IVA.",
+      "El precio de la suscripción es fijado por la Creadora dentro de los rangos permitidos. Los pagos se procesan vía Flow.cl en pesos mexicanos (MXN) e incluyen IVA.",
       "U-Mate retiene una comisión de plataforma sobre el neto después de IVA, publicada en el panel de la Creadora. La comisión puede ser modificada con al menos 15 días de aviso.",
       "La Creadora es responsable por sus propias obligaciones tributarias (inicio de actividades, boletas de honorarios, declaración y pago de impuestos) derivadas de los ingresos generados en U-Mate. U-Mate no es su empleador ni agente retenedor.",
       "Los pagos se acreditan al balance de la Creadora al confirmarse el cobro en Flow. Los retiros se solicitan desde el panel y están sujetos a verificación anti-fraude y al calendario de liquidaciones publicado.",
@@ -84,7 +84,7 @@ export const TERMS_SECTIONS: Section[] = [
     title: "10. Datos personales y privacidad",
     paragraphs: [
       "El tratamiento de datos personales se rige por la Política de Privacidad de UZEED y la Ley N° 19.628 sobre protección de la vida privada.",
-      "Los datos bancarios se almacenan cifrados y se usan únicamente para procesar pagos. La Creadora puede solicitar rectificación, cancelación u oposición escribiendo a soporte@uzeed.cl.",
+      "Los datos bancarios se almacenan cifrados y se usan únicamente para procesar pagos. La Creadora puede solicitar rectificación, cancelación u oposición escribiendo a soporte@uzeed.mx.",
     ],
   },
   {

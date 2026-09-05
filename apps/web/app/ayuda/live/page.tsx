@@ -104,7 +104,7 @@ export default function AyudaLivePage() {
           items={[
             "Prohibido cualquier contenido que involucre a menores de edad.",
             "No se permite acoso, amenazas ni discurso de odio en el chat.",
-            "Los creadores deben cumplir las reglas de UZEED y las leyes de Chile.",
+            "Los creadores deben cumplir las reglas de UZEED y las leyes de México.",
             "UZEED puede finalizar transmisiones que incumplan las normas sin previo aviso.",
           ]}
         />

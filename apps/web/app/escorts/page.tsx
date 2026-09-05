@@ -5,7 +5,7 @@ import DirectoryPage from "../../components/DirectoryPage";
 import SeoContent from "../../components/SeoContent";
 import { cleanProfileHref } from "../../lib/profileUrl";
 
-const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.cl";
+const DEFAULT_API = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.mx";
 
 function apiBase(): string {
   return DEFAULT_API.replace(/\/+$/, "");
@@ -34,23 +34,23 @@ async function fetchTopProfiles(): Promise<ProfileSummary[]> {
 }
 
 export const metadata: Metadata = {
-  title: "Escorts y Putas en Chile - Verificadas Hoy",
+  title: "Escorts y Putas en México - Verificadas Hoy",
   description:
-    "Escorts y putas verificadas en Santiago, Las Condes, Viña del Mar y todo Chile. Fotos reales, contacto directo por WhatsApp y disponibilidad hoy.",
+    "Escorts y putas verificadas en CDMX, Polanco, Guadalajara, Monterrey y todo México. Fotos reales, contacto directo por WhatsApp y disponibilidad hoy.",
   alternates: { canonical: "/escorts" },
   openGraph: {
-    title: "Escorts y Putas en Chile - Verificadas Hoy | UZEED",
+    title: "Escorts y Putas en México - Verificadas Hoy | UZEED",
     description:
-      "Escorts y acompañantes verificadas en Santiago y todo Chile. Fotos reales y contacto directo.",
-    url: "https://uzeed.cl/escorts",
+      "Escorts y acompañantes verificadas en CDMX y todo México. Fotos reales y contacto directo.",
+    url: "https://uzeed.mx/escorts",
     type: "website",
-    images: [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Escorts Chile" }],
+    images: [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Escorts México" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Escorts y Putas en Chile | UZEED",
-    description: "Escorts verificadas con fotos reales en Santiago y todo Chile.",
-    images: ["https://uzeed.cl/brand/isotipo-new.png"],
+    title: "Escorts y Putas en México | UZEED",
+    description: "Escorts verificadas con fotos reales en CDMX y todo México.",
+    images: ["https://uzeed.mx/brand/isotipo-new.png"],
   },
 };
 
@@ -74,7 +74,7 @@ export default async function EscortsPage() {
       {/* Server-rendered profile links for Google crawlability */}
       {profiles.length > 0 && (
         <nav className="max-w-5xl mx-auto px-4 pb-8" aria-label="Perfiles de escorts">
-          <h2 className="text-lg font-bold text-white/70 mb-3">Escorts Destacadas en Chile</h2>
+          <h2 className="text-lg font-bold text-white/70 mb-3">Escorts Destacadas en México</h2>
           <ul className="flex flex-wrap gap-2">
             {profiles.map((p) => (
               <li key={p.id}>

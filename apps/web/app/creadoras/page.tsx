@@ -4,20 +4,20 @@ import CreadorasClient, { type PublicProfile } from "./CreadorasClient";
 export const metadata: Metadata = {
   title: "Únete a UZEED — Onboarding para creadoras",
   description:
-    "Regístrate en UZEED, la plataforma chilena donde conectas con clientes reales, decides tus tarifas y manejas tu perfil con total privacidad.",
+    "Regístrate en UZEED, la plataforma mexicana donde conectas con clientes reales, decides tus tarifas y manejas tu perfil con total privacidad.",
   alternates: { canonical: "/creadoras" },
   openGraph: {
-    title: "Únete a UZEED — La plataforma para creadoras en Chile",
+    title: "Únete a UZEED — La plataforma para creadoras en México",
     description:
       "Perfil verificado, contacto directo con clientes, control de tu agenda y tus tarifas. Regístrate gratis y publica en minutos.",
-    url: "https://uzeed.cl/creadoras",
+    url: "https://uzeed.mx/creadoras",
     type: "website",
   },
   robots: { index: false, follow: false },
 };
 
 const DEFAULT_API =
-  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.cl";
+  process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || "https://api.uzeed.mx";
 
 function apiBase(): string {
   return DEFAULT_API.replace(/\/+$/, "");

@@ -172,12 +172,12 @@ export const ORDER_STATUS_UI: Record<MarketOrderStatus, { label: string; classNa
 };
 
 export function formatClp(value: number | null | undefined): string {
-  return `$${Math.round(Number(value) || 0).toLocaleString("es-CL")}`;
+  return `$${Math.round(Number(value) || 0).toLocaleString("es-MX")}`;
 }
 
 export function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return new Intl.DateTimeFormat("es-CL", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(
+  return new Intl.DateTimeFormat("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }).format(
     new Date(iso),
   );
 }

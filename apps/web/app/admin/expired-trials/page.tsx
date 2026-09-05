@@ -85,11 +85,11 @@ const PROFILE_TYPE_LABELS: Record<string, string> = {
 };
 
 function formatClp(value: number): string {
-  return `$${value.toLocaleString("es-CL")}`;
+  return `$${value.toLocaleString("es-MX")}`;
 }
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short", year: "numeric" });
+  return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function lastSeenLabel(iso: string | null): string {
@@ -245,7 +245,7 @@ export default function AdminExpiredTrials() {
                 <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                   <div className="rounded-xl border border-amber-500/15 bg-amber-500/[0.06] p-4">
                     <Clock className="h-4 w-4 text-amber-400/60 mb-2" />
-                    <p className="text-xl sm:text-2xl font-bold tabular-nums">{data.summary.total.toLocaleString("es-CL")}</p>
+                    <p className="text-xl sm:text-2xl font-bold tabular-nums">{data.summary.total.toLocaleString("es-MX")}</p>
                     <p className="text-[11px] text-white/40 mt-0.5">Perfiles con prueba caducada</p>
                   </div>
                   <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/[0.06] p-4">
@@ -262,7 +262,7 @@ export default function AdminExpiredTrials() {
                   </div>
                   <div className="rounded-xl border border-blue-500/15 bg-blue-500/[0.06] p-4">
                     <Activity className="h-4 w-4 text-blue-400/60 mb-2" />
-                    <p className="text-xl sm:text-2xl font-bold tabular-nums">{avgEngagement.toLocaleString("es-CL")}</p>
+                    <p className="text-xl sm:text-2xl font-bold tabular-nums">{avgEngagement.toLocaleString("es-MX")}</p>
                     <p className="text-[11px] text-white/40 mt-0.5">Interes promedio por perfil</p>
                     <p className="text-[10px] text-white/25 mt-0.5">Mensajes + favoritos + WhatsApp</p>
                   </div>
@@ -330,10 +330,10 @@ export default function AdminExpiredTrials() {
                                 <p className="text-[10px] text-amber-400/60">Hace {p.daysExpired}d</p>
                               </td>
                               <td className="px-3 py-2.5 text-white/50">{lastSeenLabel(p.lastSeen)}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.profileViews.toLocaleString("es-CL")}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.messagesReceived.toLocaleString("es-CL")}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.favoritesReceived.toLocaleString("es-CL")}</td>
-                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.whatsappClicks.toLocaleString("es-CL")}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.profileViews.toLocaleString("es-MX")}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.messagesReceived.toLocaleString("es-MX")}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.favoritesReceived.toLocaleString("es-MX")}</td>
+                              <td className="px-3 py-2.5 text-right tabular-nums text-white/60">{p.whatsappClicks.toLocaleString("es-MX")}</td>
                               <td className="px-3 py-2.5 text-right tabular-nums font-semibold text-emerald-300/80">{formatClp(p.potentialMonthlyClp)}</td>
                               <td className="px-4 py-2.5 text-right tabular-nums font-semibold text-red-300/70">{formatClp(p.estimatedLostClp)}</td>
                             </tr>

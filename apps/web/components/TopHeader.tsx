@@ -39,7 +39,7 @@ import QuickExitBar from "./QuickExitBar";
 import { DISCREET_BRAND, discreetLabel } from "../lib/discreet";
 import { apiFetch } from "../lib/api";
 import { connectRealtime } from "../lib/realtime";
-import { CHILEAN_CITIES, LocationFilterContext } from "../hooks/useLocationFilter";
+import { MEXICAN_CITIES, LocationFilterContext } from "../hooks/useLocationFilter";
 import { useForumNotifications } from "./ForumNotifications";
 
 type NotificationItem = {
@@ -99,7 +99,7 @@ function notificationUrl(item: NotificationItem): string | null {
 }
 
 function notificationTime(iso: string): string {
-  return new Intl.DateTimeFormat("es-CL", {
+  return new Intl.DateTimeFormat("es-MX", {
     hour: "2-digit", minute: "2-digit", day: "2-digit", month: "2-digit",
   }).format(new Date(iso));
 }
@@ -268,7 +268,7 @@ export default function TopHeader() {
                 <Link href="/" className="flex items-center gap-1.5 md:gap-2.5">
                   <Image
                     src="/brand/isotipo-new.png"
-                    alt="UZEED - Escorts y Acompañantes en Chile"
+                    alt="UZEED - Escorts y Acompañantes en México"
                     width={48}
                     height={48}
                     priority
@@ -341,9 +341,9 @@ export default function TopHeader() {
                         </button>
                         <div className="my-2 border-t border-white/[0.06]" />
                         <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-                          Ciudades de Chile
+                          Ciudades de México
                         </div>
-                        {CHILEAN_CITIES.map((city) => (
+                        {MEXICAN_CITIES.map((city) => (
                           <button
                             key={city.name}
                             type="button"
@@ -533,7 +533,7 @@ export default function TopHeader() {
                   <Search className="h-4 w-4 text-white/40" /> Cerca tuyo
                 </button>
                 <a
-                  href="https://live.uzeed.cl/south-american-cams/female/"
+                  href="https://live.uzeed.mx/south-american-cams/female/"
                   onClick={() => setHamburgerOpen(false)}
                   rel="noopener noreferrer sponsored"
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/80 hover:bg-white/[0.06] transition"

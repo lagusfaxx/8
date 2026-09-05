@@ -4,17 +4,17 @@ import DirectoryPage from "../../components/DirectoryPage";
 import SeoContent from "../../components/SeoContent";
 
 export const metadata: Metadata = {
-  title: "Sex Shop en Chile - Juguetes y Accesorios para Adultos",
+  title: "Sex Shop en México - Juguetes y Accesorios para Adultos",
   description:
-    "Compra juguetes sexuales, lencería y accesorios para adultos en Chile. Envío discreto y precios accesibles en UZEED.",
+    "Compra juguetes sexuales, lencería y accesorios para adultos en México. Envío discreto a toda la República y precios accesibles en UZEED.",
   keywords: ["sexshop chile", "sex shop santiago", "juguetes sexuales chile", "tienda erótica chile"],
   alternates: { canonical: "/sexshop" },
   openGraph: {
-    title: "Sex Shop en Chile | UZEED",
+    title: "Sex Shop en México | UZEED",
     description: "Juguetes sexuales, lencería y accesorios para adultos con envío discreto.",
-    url: "https://uzeed.cl/sexshop",
+    url: "https://uzeed.mx/sexshop",
     type: "website",
-    images: [{ url: "https://uzeed.cl/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Sex Shop" }],
+    images: [{ url: "https://uzeed.mx/brand/isotipo-new.png", width: 720, height: 720, alt: "UZEED Sex Shop" }],
   },
 };
 

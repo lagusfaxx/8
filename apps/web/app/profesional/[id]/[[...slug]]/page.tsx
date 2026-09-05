@@ -37,8 +37,8 @@ export default async function ProfessionalDetailPage({ params }: Props) {
   }
 
   const canonicalUrl = p
-    ? `https://uzeed.cl${canonicalProfilePath(p)}`
-    : `https://uzeed.cl/profesional/${id}`;
+    ? `https://uzeed.mx${canonicalProfilePath(p)}`
+    : `https://uzeed.mx/profesional/${id}`;
 
   // Si la API no resuelve el perfil, renderiza igualmente el componente
   // interactivo por id (hace su propia carga y muestra su estado).

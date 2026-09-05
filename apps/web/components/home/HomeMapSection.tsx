@@ -92,7 +92,7 @@ export default function HomeMapSection({ fullBleed = false }: Props) {
   const fetchRef = useRef(0);
 
   const hasToken = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
-  /* Ojo: sin ubicación el mapa cae a Santiago. En ese caso NO se puede hablar
+  /* Ojo: sin ubicación el mapa cae a Ciudad de México. En ese caso NO se puede hablar
      de cercanía — para alguien en Concepción sería falso. */
   const hasLocation = Boolean(effectiveLoc);
   const locationLabel =
@@ -227,10 +227,10 @@ export default function HomeMapSection({ fullBleed = false }: Props) {
   } else if (loading && !nearby.length) {
     statusText = "Buscando perfiles…";
   } else if (!hasLocation) {
-    // Fallback a Santiago: se dice cuál es la referencia en vez de fingir cercanía.
+    // Fallback a Ciudad de México: se dice cuál es la referencia en vez de fingir cercanía.
     statusText =
       nearby.length > 0
-        ? `${nearby.length} perfil${nearby.length === 1 ? "" : "es"} en Santiago${connected}. Activa tu ubicación para ver los de tu zona.`
+        ? `${nearby.length} perfil${nearby.length === 1 ? "" : "es"} en Ciudad de México${connected}. Activa tu ubicación para ver los de tu zona.`
         : "Activa tu ubicación para ver quién está cerca tuyo.";
   } else if (nearby.length > 0) {
     statusText = `${nearby.length} perfil${nearby.length === 1 ? "" : "es"} a menos de ${radiusKm} km${connected}`;
@@ -355,9 +355,9 @@ export default function HomeMapSection({ fullBleed = false }: Props) {
                       {p.displayName || p.username}
                     </div>
                     <div className="mt-0.5 truncate text-[10px] text-white/40">
-                      {/* Sin ubicación real la distancia se mide desde Santiago:
-                          se muestra la comuna en su lugar. */}
-                      {hasLocation && dist ? `a ${dist}` : p.city || "Chile"}
+                      {/* Sin ubicación real la distancia se mide desde Ciudad de México:
+                          se muestra la ciudad en su lugar. */}
+                      {hasLocation && dist ? `a ${dist}` : p.city || "México"}
                     </div>
                   </div>
                 </Link>

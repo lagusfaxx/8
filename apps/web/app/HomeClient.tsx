@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { apiFetch, resolveMediaUrl } from "../lib/api";
-import { CHILEAN_CITIES, LocationFilterContext } from "../hooks/useLocationFilter";
+import { MEXICAN_CITIES, LocationFilterContext } from "../hooks/useLocationFilter";
 import { CITY_LANDINGS } from "../lib/cities";
 import { PROFILE_TAGS_CATALOG, SERVICE_TAGS_CATALOG } from "../components/DirectoryPage";
 import useMe from "../hooks/useMe";
@@ -51,7 +51,7 @@ function trialLabel(days: number): string {
 const FREE_TRIAL_DAYS = Number(process.env.NEXT_PUBLIC_FREE_TRIAL_DAYS || 90);
 const TRIAL_TEXT = `${trialLabel(FREE_TRIAL_DAYS)} gratis`;
 
-/* ── Hero search: smart routing (categorías / tags / comunas) ── */
+/* ── Hero search: smart routing (categorías / tags / ciudades) ── */
 const CATEGORY_ALIASES: Array<{ keywords: string[]; href: string }> = [
   { keywords: ["escort", "escorts", "puta", "putas", "acompañante", "acompañantes", "acompanante", "acompanantes"], href: "/escorts" },
   { keywords: ["masajista", "masajistas", "masaje", "masajes"], href: "/masajistas" },
@@ -59,7 +59,7 @@ const CATEGORY_ALIASES: Array<{ keywords: string[]; href: string }> = [
   { keywords: ["sexshop", "sex shop", "sexo shop", "juguete", "juguetes"], href: "/sexshop" },
   { keywords: ["marketplace", "market", "tienda", "packs", "pack de fotos", "comprar"], href: "/marketplace" },
   { keywords: ["premium", "gold", "platino", "diamante", "diamond"], href: "/premium" },
-  { keywords: ["live", "lives", "en vivo"], href: "https://live.uzeed.cl/south-american-cams/female/" },
+  { keywords: ["live", "lives", "en vivo"], href: "https://live.uzeed.mx/south-american-cams/female/" },
   { keywords: ["foro", "comunidad"], href: "/foro" },
 ];
 
@@ -67,7 +67,7 @@ function normalizeQuery(s: string): string {
   return s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-type ResolvedSearch = { href: string; cityToSet?: (typeof CHILEAN_CITIES)[number] };
+type ResolvedSearch = { href: string; cityToSet?: (typeof MEXICAN_CITIES)[number] };
 function resolveSearch(raw: string): ResolvedSearch {
   const q = normalizeQuery(raw);
   if (!q) return { href: "/escorts" };
@@ -100,8 +100,8 @@ function resolveSearch(raw: string): ResolvedSearch {
     return { href: `/escorts?profileTags=${encodeURIComponent(profileMatch)}` };
   }
 
-  // 4. Comuna / ciudad chilena: setear la location y llevar a /escorts
-  const cityMatch = CHILEAN_CITIES.find((c) => {
+  // 4. Alcaldía / ciudad mexicana: setear la location y llevar a /escorts
+  const cityMatch = MEXICAN_CITIES.find((c) => {
     const nc = normalizeQuery(c.name);
     return nc === q || nc.includes(q) || q.includes(nc);
   });
@@ -114,7 +114,7 @@ function resolveSearch(raw: string): ResolvedSearch {
   return { href: `/escorts?q=${encodeURIComponent(raw.trim())}` };
 }
 
-/* La ciudad del perfil es texto libre ("Las Condes", "Las Condes, Santiago"),
+/* La ciudad del perfil es texto libre ("Polanco", "Polanco, CDMX"),
    así que se compara sin tildes y por contención en ambos sentidos. */
 function sameCityName(
   profileCity: string | null | undefined,
@@ -309,8 +309,8 @@ export default function HomeClient() {
   const locationCtx = useContext(LocationFilterContext);
   const location = locationCtx?.effectiveLocation ?? SANTIAGO_FALLBACK;
   /* Comuna elegida en el chip. Va aparte de las coordenadas: la distancia se
-     mide contra el centro de la comuna, así que sin el nombre la API no puede
-     poner los perfiles de la comuna por delante de los de la vecina. */
+     mide contra el centro de la ciudad, así que sin el nombre la API no puede
+     poner los perfiles de la ciudad por delante de los de la vecina. */
   const selectedCityName =
     locationCtx?.state.mode === "city"
       ? locationCtx.state.selectedCity?.name ?? null
@@ -389,8 +389,8 @@ export default function HomeClient() {
     }
     params.set("limit", "30");
     params.set("gender", "FEMALE");
-    // Con comuna elegida en el chip, sus perfiles van primero: la distancia se
-    // mide contra el centro de la comuna y una vecina puede quedar más cerca.
+    // Con ciudad elegida en el chip, sus perfiles van primero: la distancia se
+    // mide contra el centro de la ciudad y una vecina puede quedar más cerca.
     if (selectedCityName) params.set("city", selectedCityName);
     const query = params.toString();
 
@@ -428,9 +428,9 @@ export default function HomeClient() {
           }),
         );
 
-        /* Los de la comuna elegida arriba y, dentro de ella, por cercanía;
+        /* Los de la ciudad elegida arriba y, dentro de ella, por cercanía;
            después el resto por distancia real. Ordenar solo por distancia
-           metía perfiles de la comuna vecina por delante de los de la comuna
+           metía perfiles de la ciudad vecina por delante de los de la ciudad
            que la persona acababa de elegir en el chip. */
         mapped.sort((a, b) => {
           if (selectedCityName) {
@@ -608,11 +608,11 @@ export default function HomeClient() {
 
           <p className="mx-auto mt-2 max-w-lg text-[12.5px] leading-snug text-white/50 sm:text-sm">
             {discreet ? (
-              <>Mira en el mapa qué hay disponible cerca de ti, en {CITY_LANDINGS.length} comunas.</>
+              <>Mira en el mapa qué hay disponible cerca de ti, en {CITY_LANDINGS.length} ciudades.</>
             ) : (
               <>
                 Mira en el mapa quién está a pocos kilómetros y conectada ahora mismo.
-                Perfiles verificados en Santiago, Viña del Mar y otras {CITY_LANDINGS.length - 2} comunas.
+                Perfiles verificados en Ciudad de México, Guadalajara y otras {CITY_LANDINGS.length - 2} ciudades.
               </>
             )}
           </p>
@@ -655,7 +655,7 @@ export default function HomeClient() {
               type="search"
               value={heroQuery}
               onChange={(e) => setHeroQuery(e.target.value)}
-              placeholder="Nombre, comuna o servicio"
+              placeholder="Nombre, ciudad o servicio"
               aria-label="Buscar"
               className="w-full bg-transparent text-sm text-white placeholder:text-white/35 outline-none"
             />
@@ -934,7 +934,7 @@ export default function HomeClient() {
                       )}
                       {/* Badge tarifa mensual */}
                       <div className="absolute right-2 top-2 z-[3] flex items-center gap-1 rounded-lg border border-[#00aff0]/25 bg-black/50 px-2 py-0.5 text-[10px] font-bold text-[#00aff0] backdrop-blur-xl tabular-nums">
-                        ${c.monthlyPriceCLP.toLocaleString("es-CL")}/mes
+                        ${c.monthlyPriceCLP.toLocaleString("es-MX")}/mes
                       </div>
                       <div className="uzeed-card-gradient-subtle absolute inset-0" />
                       {/* Nombre + suscriptores */}

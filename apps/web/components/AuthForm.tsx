@@ -38,8 +38,8 @@ function flattenValidation(details: any): string | null {
       if (low.includes("invalid email")) return "El email no es válido.";
       if (low.includes("too small")) return `${f} es demasiado corto.`;
       if (low.includes("too big")) return `${f} es demasiado largo.`;
-      if (low.includes("código de país") || low.includes("+56"))
-        return "Ingresa un número válido con código de país (+56, +57, +58 o +51).";
+      if (low.includes("código de país") || low.includes("+52"))
+        return "Ingresa un número válido con código de país (+52, +57, +58 o +51).";
       return `${f}: ${msg}`;
     }),
   );
@@ -112,7 +112,7 @@ export default function AuthForm({
     profileType === "PROFESSIONAL" ||
     profileType === "ESTABLISHMENT" ||
     profileType === "SHOP";
-  const phoneRegex = /^\+(?:56\s?9(?:[\s-]?\d){8}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
+  const phoneRegex = /^\+(?:52\s?1?(?:[\s-]?\d){10}|57\s?3(?:[\s-]?\d){9}|58\s?4(?:[\s-]?\d){9}|51\s?9(?:[\s-]?\d){8})$/;
 
   const finalTermsAccepted = externalTermsAccepted ?? acceptTerms;
 
@@ -130,7 +130,7 @@ export default function AuthForm({
         }
         if (!phoneRegex.test(phone.trim())) {
           setError(
-            "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+            "Ingresa un número válido con código de país (+52, +57, +58 o +51).",
           );
           setLoading(false);
           return;
@@ -236,7 +236,7 @@ export default function AuthForm({
             className="input"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            placeholder="+56 9 1234 5678 / +57 3..."
+            placeholder="+52 55 1234 5678 / +57 3..."
             required
           />
         </div>

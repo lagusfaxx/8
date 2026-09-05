@@ -5,15 +5,15 @@ import RegisterClient from "./RegisterClient";
 export const metadata: Metadata = {
   title: "Crear cuenta en UZEED — Regístrate gratis",
   description:
-    "Regístrate gratis en UZEED. Crea tu cuenta como cliente, acompañante, motel u hotel para publicar tu perfil, guardar favoritos y contactar por chat en Chile.",
+    "Regístrate gratis en UZEED. Crea tu cuenta como cliente, acompañante, motel u hotel para publicar tu perfil, guardar favoritos y contactar por chat en México.",
   alternates: {
     canonical: "/register",
   },
   openGraph: {
     title: "Crear cuenta en UZEED — Regístrate gratis",
     description:
-      "Regístrate gratis en UZEED. Crea tu cuenta como cliente, acompañante, motel u hotel en Chile.",
-    url: "https://uzeed.cl/register",
+      "Regístrate gratis en UZEED. Crea tu cuenta como cliente, acompañante, motel u hotel en México.",
+    url: "https://uzeed.mx/register",
   },
 };
 

@@ -35,7 +35,7 @@ const tabsMeta: Array<{ key: TabKey; label: string; icon: string }> = [
 
 /* ── Helpers ── */
 function formatMoney(value?: number | null) {
-  return `$${Number(value || 0).toLocaleString("es-CL")}`;
+  return `$${Number(value || 0).toLocaleString("es-MX")}`;
 }
 
 /* ── Glass input ── */
@@ -717,7 +717,7 @@ export default function ShopDashboardClient() {
                       ))}
                     </select>
                   </div>
-                  <GlassInput label="Precio (CLP)" type="number" min="0" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} placeholder="0" />
+                  <GlassInput label="Precio (MXN)" type="number" min="0" value={productPrice} onChange={(e) => setProductPrice(e.target.value)} placeholder="0" />
                   <GlassInput label="Stock" type="number" min="0" value={productStock} onChange={(e) => setProductStock(e.target.value)} placeholder="0" />
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -851,8 +851,8 @@ export default function ShopDashboardClient() {
               <h3 className="mb-1 text-sm font-semibold text-white/80">Dirección de la tienda</h3>
               <p className="mb-4 text-xs text-white/40">Los clientes verán tu ubicación en el mapa de tiendas cercanas.</p>
               <div className="grid gap-4">
-                <GlassInput label="Dirección" value={address} onChange={(e) => { setAddress(e.target.value); setLocationVerified(false); }} placeholder="Ej: Av. Providencia 1234, Santiago" />
-                <GlassInput label="Ciudad" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ej: Santiago" />
+                <GlassInput label="Dirección" value={address} onChange={(e) => { setAddress(e.target.value); setLocationVerified(false); }} placeholder="Ej: Av. Insurgentes Sur 1234, CDMX" />
+                <GlassInput label="Ciudad" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Ej: Ciudad de México" />
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={geocodeAddress}

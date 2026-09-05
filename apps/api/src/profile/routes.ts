@@ -698,7 +698,7 @@ async function updateProfile(req: any, res: any) {
     ) {
       return res.status(400).json({
         error: "BASE_RATE_TOO_LOW",
-        message: `La tarifa base mínima es $${MIN_BASE_RATE.toLocaleString("es-CL")} CLP.`,
+        message: `La tarifa base mínima es $${MIN_BASE_RATE.toLocaleString("es-MX")} CLP.`,
       });
     }
   }
@@ -713,7 +713,7 @@ async function updateProfile(req: any, res: any) {
         return res.status(400).json({
           error: "PHONE_INVALID",
           message:
-            "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+            "Ingresa un número válido con código de país (+52, +57, +58 o +51).",
         });
       }
       // El número de WhatsApp es la vía de contacto del anuncio: cambiarlo por
@@ -1118,7 +1118,7 @@ profileRouter.post(
       return res.status(400).json({
         error: "PHONE_INVALID",
         message:
-          "Ingresa un número válido con código de país (+56, +57, +58 o +51).",
+          "Ingresa un número válido con código de país (+52, +57, +58 o +51).",
       });
     }
 

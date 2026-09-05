@@ -103,7 +103,7 @@ billingRouter.post("/billing/payment/flow", requireAuth, asyncHandler(async (req
     if (daysRemaining > 3) {
       return res.status(400).json({
         error: "MEMBERSHIP_STILL_ACTIVE",
-        message: `Tu plan está activo hasta el ${user.membershipExpiresAt.toLocaleDateString("es-CL")}. Puedes renovar cuando falten 3 días o menos.`,
+        message: `Tu plan está activo hasta el ${user.membershipExpiresAt.toLocaleDateString("es-MX")}. Puedes renovar cuando falten 3 días o menos.`,
         membershipExpiresAt: user.membershipExpiresAt.toISOString(),
         daysRemaining: Math.ceil(daysRemaining)
       });
@@ -201,7 +201,7 @@ billingRouter.post("/billing/payment/transfer", requireAuth, asyncHandler(async 
     if (daysRemaining > 3) {
       return res.status(400).json({
         error: "MEMBERSHIP_STILL_ACTIVE",
-        message: `Tu plan está activo hasta el ${user.membershipExpiresAt.toLocaleDateString("es-CL")}. Puedes renovar cuando falten 3 días o menos.`,
+        message: `Tu plan está activo hasta el ${user.membershipExpiresAt.toLocaleDateString("es-MX")}. Puedes renovar cuando falten 3 días o menos.`,
         membershipExpiresAt: user.membershipExpiresAt.toISOString(),
         daysRemaining: Math.ceil(daysRemaining)
       });

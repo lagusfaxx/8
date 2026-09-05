@@ -196,7 +196,7 @@ function StoryViewer({
           <div>
             <p className="text-sm font-semibold text-white">{group.displayName}</p>
             <p className="text-[10px] text-white/50">
-              {new Date(story.createdAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}
+              {new Date(story.createdAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
             </p>
           </div>
           {isVideo && (

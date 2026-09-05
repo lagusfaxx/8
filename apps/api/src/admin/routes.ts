@@ -522,7 +522,7 @@ adminRouter.put(
           return res.status(400).json({
             error: "VALIDATION",
             message:
-              "Número inválido. Usa formato internacional, por ejemplo +56 9 1234 5678.",
+              "Número inválido. Usa formato internacional, por ejemplo +52 55 1234 5678.",
           });
         }
         // El mismo número puede estar guardado con o sin espacios, así que se
@@ -1495,7 +1495,7 @@ adminRouter.post(
       .slice(0, 20);
     const suffix = Date.now().toString(36);
     const username = `${slug}-${suffix}`;
-    const email = `admin-managed-${username}@placeholder.uzeed.cl`;
+    const email = `admin-managed-${username}@placeholder.uzeed.mx`;
 
     const professional = await prisma.user.create({
       data: {
@@ -1813,7 +1813,7 @@ adminRouter.post(
 
     const recipientWhere: any = {
       isActive: true,
-      email: { not: { contains: "@placeholder.uzeed.cl" } },
+      email: { not: { contains: "@placeholder.uzeed.mx" } },
     };
 
     if (audience === "clients") {
@@ -1939,14 +1939,14 @@ adminRouter.get(
         where: {
           isActive: true,
           profileType: { in: [...PROFESSIONAL_TYPES] },
-          NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+          NOT: { email: { contains: "@placeholder.uzeed.mx" } },
         } as any,
       }),
       prisma.user.count({
         where: {
           isActive: true,
           profileType: { in: [...CLIENT_TYPES] },
-          NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+          NOT: { email: { contains: "@placeholder.uzeed.mx" } },
         } as any,
       }),
     ]);
@@ -2048,7 +2048,7 @@ adminRouter.post(
       where: {
         ...where,
         isActive: true,
-        NOT: { email: { contains: "@placeholder.uzeed.cl" } },
+        NOT: { email: { contains: "@placeholder.uzeed.mx" } },
       },
       select: { email: true },
     });

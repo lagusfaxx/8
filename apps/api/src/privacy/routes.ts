@@ -34,7 +34,7 @@ privacyRouter.get("/legal/privacidad", (_req, res) => {
 <h1>Política de Privacidad</h1>
 <p class="date">Última actualización: 2 de abril de 2026</p>
 
-<p>Uzeed ("nosotros", "la plataforma") opera la aplicación móvil Uzeed y el sitio web uzeed.cl. Esta política describe cómo recopilamos, usamos y protegemos tu información personal.</p>
+<p>Uzeed ("nosotros", "la plataforma") opera la aplicación móvil Uzeed y el sitio web uzeed.mx. Esta política describe cómo recopilamos, usamos y protegemos tu información personal.</p>
 
 <h2>1. Información que recopilamos</h2>
 <ul>
@@ -75,7 +75,7 @@ privacyRouter.get("/legal/privacidad", (_req, res) => {
 </ul>
 
 <h2>6. Eliminación de cuenta</h2>
-<p>Puedes solicitar la eliminación de tu cuenta directamente desde la app en Perfil → Eliminar cuenta, o enviando un correo a <a href="mailto:contacto@uzeed.cl">contacto@uzeed.cl</a>. Procesaremos tu solicitud en un máximo de 30 días.</p>
+<p>Puedes solicitar la eliminación de tu cuenta directamente desde la app en Perfil → Eliminar cuenta, o enviando un correo a <a href="mailto:contacto@uzeed.mx">contacto@uzeed.mx</a>. Procesaremos tu solicitud en un máximo de 30 días.</p>
 
 <h2>7. Menores de edad</h2>
 <p>Uzeed está destinado exclusivamente a personas mayores de 18 años. No recopilamos intencionalmente datos de menores.</p>
@@ -84,7 +84,7 @@ privacyRouter.get("/legal/privacidad", (_req, res) => {
 <p>Notificaremos cualquier cambio material a esta política a través de la app. El uso continuado constituye aceptación de los cambios.</p>
 
 <h2>9. Contacto</h2>
-<p>Para consultas sobre privacidad: <a href="mailto:contacto@uzeed.cl">contacto@uzeed.cl</a></p>
+<p>Para consultas sobre privacidad: <a href="mailto:contacto@uzeed.mx">contacto@uzeed.mx</a></p>
 </body></html>`);
 });
 
@@ -120,7 +120,7 @@ privacyRouter.get("/legal/seguridad-infantil", (_req, res) => {
 <p>Si encuentras contenido o comportamiento que ponga en riesgo a menores:</p>
 <ul>
   <li>Usa el botón "Reportar usuario" dentro de la aplicación.</li>
-  <li>Envía un correo a <a href="mailto:contacto@uzeed.cl">contacto@uzeed.cl</a> con el asunto "Seguridad Infantil".</li>
+  <li>Envía un correo a <a href="mailto:contacto@uzeed.mx">contacto@uzeed.mx</a> con el asunto "Seguridad Infantil".</li>
 </ul>
 <p>Todos los reportes relacionados con seguridad infantil son tratados con máxima prioridad.</p>
 
@@ -128,7 +128,7 @@ privacyRouter.get("/legal/seguridad-infantil", (_req, res) => {
 <p>Uzeed coopera plenamente con las autoridades policiales y judiciales. Reportamos cualquier caso de EASI identificado a las autoridades competentes, incluyendo el NCMEC (National Center for Missing & Exploited Children) y las autoridades chilenas correspondientes.</p>
 
 <h2>6. Contacto</h2>
-<p>Para reportar problemas de seguridad infantil: <a href="mailto:contacto@uzeed.cl">contacto@uzeed.cl</a></p>
+<p>Para reportar problemas de seguridad infantil: <a href="mailto:contacto@uzeed.mx">contacto@uzeed.mx</a></p>
 </body></html>`);
 });
 
@@ -191,7 +191,7 @@ privacyRouter.get("/legal/terminos", (_req, res) => {
 <p>Estos términos se rigen por las leyes de la República de Chile. Cualquier disputa se resolverá ante los tribunales competentes de Santiago.</p>
 
 <h2>11. Contacto</h2>
-<p>Para consultas: <a href="mailto:contacto@uzeed.cl">contacto@uzeed.cl</a></p>
+<p>Para consultas: <a href="mailto:contacto@uzeed.mx">contacto@uzeed.mx</a></p>
 </body></html>`);
 });
 

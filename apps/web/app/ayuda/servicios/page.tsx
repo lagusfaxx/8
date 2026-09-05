@@ -44,7 +44,7 @@ export default function AyudaServiciosPage() {
         <p>
           En la parte superior hay un selector con tu ciudad. Puedes usar tu
           ubicación GPS (requiere permiso del navegador) o elegir manualmente
-          una ciudad chilena del listado. El filtro de ubicación afecta a
+          una ciudad mexicana del listado. El filtro de ubicación afecta a
           todas las secciones del directorio.
         </p>
       </Section>

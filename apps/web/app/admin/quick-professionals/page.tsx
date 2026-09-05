@@ -378,7 +378,7 @@ export default function AdminQuickProfessionalsPage() {
               <MapboxAddressAutocomplete
                 label="Direccion / Ubicacion *"
                 value={address}
-                placeholder="Av. Providencia 1234, Santiago"
+                placeholder="Av. Insurgentes Sur 1234, CDMX"
                 required={!editingId}
                 onChange={(v) => setAddress(v)}
                 onSelect={(suggestion) => {
@@ -403,7 +403,7 @@ export default function AdminQuickProfessionalsPage() {
                 className="input"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Santiago"
+                placeholder="Ciudad de México"
                 required
               />
             </div>
@@ -418,7 +418,7 @@ export default function AdminQuickProfessionalsPage() {
                 className="input"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+56 9 1234 5678"
+                placeholder="+52 55 1234 5678"
               />
             </div>
 

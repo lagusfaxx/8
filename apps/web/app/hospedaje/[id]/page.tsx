@@ -55,7 +55,7 @@ type Detail = {
 };
 
 function formatMoney(value?: number | null) {
-  return `$${Number(value || 0).toLocaleString("es-CL")}`;
+  return `$${Number(value || 0).toLocaleString("es-MX")}`;
 }
 
 export default function HospedajeDetailPage() {
@@ -470,7 +470,7 @@ export default function HospedajeDetailPage() {
                 {existingBooking.room?.name && <p>Habitación: {existingBooking.room.name}</p>}
                 {existingBooking.roomName && <p>Habitación: {existingBooking.roomName}</p>}
                 {existingBooking.startAt && (
-                  <p>Fecha: {new Date(existingBooking.startAt).toLocaleString("es-CL", { dateStyle: "medium", timeStyle: "short" })}</p>
+                  <p>Fecha: {new Date(existingBooking.startAt).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" })}</p>
                 )}
               </div>
               <Link

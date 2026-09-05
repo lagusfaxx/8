@@ -104,7 +104,7 @@ function buildEmailHtml(code: string): string {
           <!-- Header with logo -->
           <tr>
             <td align="center" style="padding:40px 30px 20px;">
-              <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+              <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
             </td>
           </tr>
           <!-- Title -->
@@ -138,7 +138,7 @@ function buildEmailHtml(code: string): string {
             <td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
               <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
                 Si no solicitaste este código, puedes ignorar este email.<br/>
-                &copy; UZEED — uzeed.cl
+                &copy; UZEED — uzeed.mx
               </p>
             </td>
           </tr>
@@ -206,7 +206,7 @@ verificationRouter.post(
       try {
         const resend = new Resend(config.resendApiKey);
         await resend.emails.send({
-          from: "UZEED <no-reply@uzeed.cl>",
+          from: "UZEED <no-reply@uzeed.mx>",
           to: normalizedEmail,
           subject: "Código de verificación — UZEED",
           html: buildEmailHtml(code),
@@ -310,7 +310,7 @@ function buildResetEmailHtml(code: string): string {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1),rgba(59,130,246,0.08));border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:40px 30px 20px;">
-              <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+              <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
             </td>
           </tr>
           <tr>
@@ -339,7 +339,7 @@ function buildResetEmailHtml(code: string): string {
             <td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
               <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
                 Si no solicitaste este código, puedes ignorar este email.<br/>
-                &copy; UZEED — uzeed.cl
+                &copy; UZEED — uzeed.mx
               </p>
             </td>
           </tr>
@@ -394,7 +394,7 @@ verificationRouter.post(
       try {
         const resend = new Resend(config.resendApiKey);
         await resend.emails.send({
-          from: "UZEED <no-reply@uzeed.cl>",
+          from: "UZEED <no-reply@uzeed.mx>",
           to: normalizedEmail,
           subject: "Restablecer contraseña — UZEED",
           html: buildResetEmailHtml(code),
@@ -553,7 +553,7 @@ function buildSetPasswordEmailHtml(link: string): string {
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1),rgba(59,130,246,0.08));border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;">
           <tr>
             <td align="center" style="padding:40px 30px 20px;">
-              <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+              <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
             </td>
           </tr>
           <tr>
@@ -580,7 +580,7 @@ function buildSetPasswordEmailHtml(link: string): string {
             <td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
               <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
                 Si no creaste este perfil, puedes ignorar este email.<br/>
-                &copy; UZEED — uzeed.cl
+                &copy; UZEED — uzeed.mx
               </p>
             </td>
           </tr>
@@ -603,7 +603,7 @@ export async function sendSetPasswordEmail(email: string, token: string) {
 
   const resend = new Resend(config.resendApiKey);
   await resend.emails.send({
-    from: "UZEED <no-reply@uzeed.cl>",
+    from: "UZEED <no-reply@uzeed.mx>",
     to: email,
     subject: "Crea tu contraseña — UZEED",
     html: buildSetPasswordEmailHtml(link),

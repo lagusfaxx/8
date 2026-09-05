@@ -79,13 +79,13 @@ export default function AdminWithdrawalsPage() {
                     <p className="text-[10px] text-white/40">{w.wallet.user.email}</p>
                     <div className="mt-2 flex items-center gap-3">
                       <span className="text-lg font-bold text-emerald-300">{w.amount} tokens</span>
-                      <span className="text-xs text-white/40">→ ${w.clpAmount.toLocaleString("es-CL")} CLP</span>
+                      <span className="text-xs text-white/40">→ ${w.clpAmount.toLocaleString("es-MX")} MXN</span>
                     </div>
                     <div className="mt-2 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-xs text-white/50">
                       <p>{w.bankName} · {w.accountType} · {w.accountNumber}</p>
                       <p>{w.holderName} · {w.holderRut}</p>
                     </div>
-                    <p className="mt-1 text-[10px] text-white/30">{new Date(w.createdAt).toLocaleString("es-CL")}</p>
+                    <p className="mt-1 text-[10px] text-white/30">{new Date(w.createdAt).toLocaleString("es-MX")}</p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     {w.status === "PENDING" && (

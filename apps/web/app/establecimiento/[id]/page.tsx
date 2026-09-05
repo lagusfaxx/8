@@ -163,7 +163,7 @@ export default function EstablishmentDetailPage() {
                 {data.fromPrice != null && data.fromPrice > 0 && (
                   <div className="flex items-center gap-2">
                     <Clock size={16} className="text-fuchsia-400" />
-                    <span>Desde ${data.fromPrice.toLocaleString("es-CL")}</span>
+                    <span>Desde ${data.fromPrice.toLocaleString("es-MX")}</span>
                   </div>
                 )}
               </div>
@@ -212,7 +212,7 @@ export default function EstablishmentDetailPage() {
               <div key={room.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
                 <h3 className="font-medium text-white/90">{room.name}</h3>
                 {room.description && <p className="mt-1 text-xs text-white/50">{room.description}</p>}
-                <p className="mt-2 text-sm font-semibold text-fuchsia-300">${room.price.toLocaleString("es-CL")}</p>
+                <p className="mt-2 text-sm font-semibold text-fuchsia-300">${room.price.toLocaleString("es-MX")}</p>
               </div>
             ))}
           </div>

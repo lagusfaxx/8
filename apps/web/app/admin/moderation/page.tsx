@@ -49,7 +49,7 @@ export default function ModerationPage() {
               <div className="font-medium">{item.title}</div>
               <div className="text-sm text-white/70">{item.body}</div>
               <div className="mt-2 text-xs text-white/50">
-                {new Date(item.timestamp).toLocaleString("es-CL")}
+                {new Date(item.timestamp).toLocaleString("es-MX")}
               </div>
             </div>
           ))

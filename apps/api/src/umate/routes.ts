@@ -1785,7 +1785,7 @@ umateRouter.post("/umate/creators/:creatorId/subscribe-direct/confirm", requireA
       creatorId,
       subscriptionId: record.id,
       gross,
-      description: `Suscripción directa (PAC) — $${gross.toLocaleString("es-CL")} CLP`,
+      description: `Suscripción directa (PAC) — $${gross.toLocaleString("es-MX")} CLP`,
     });
   }
 

@@ -68,7 +68,7 @@ function timeAgo(dateStr: string) {
   if (hours < 24) return `${hours}h`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
-  return new Date(dateStr).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
 // Simulate online status based on last message recency

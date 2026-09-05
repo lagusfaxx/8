@@ -72,7 +72,7 @@ export default function AyudaSeguridadPage() {
         <p>
           Solo recopilamos la información necesaria para operar la plataforma
           (correo, datos de perfil, transacciones). No vendemos tus datos a
-          terceros y cumplimos con la legislación chilena vigente. Puedes leer
+          terceros y cumplimos con la legislación mexicana vigente. Puedes leer
           la{" "}
           <Link href="/privacidad" className="text-fuchsia-400 underline hover:text-fuchsia-300">
             política de privacidad completa

@@ -325,7 +325,7 @@ function PostCarousel({ posts, onLike, onOpenComments, isBlurredAll, viewerUsern
                     {(post.commentCount || 0) > 0 && <span className="font-semibold">{post.commentCount}</span>}
                   </button>
                   <span className="ml-auto text-[10px] text-white/20">
-                    {new Date(post.createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short" })}
+                    {new Date(post.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                   </span>
                 </div>
               </div>
@@ -600,7 +600,7 @@ export default function ExplorePage() {
                                   <span className="font-semibold text-white/70">{c.user.displayName || c.user.username}</span>{" "}
                                   <span className="text-white/40">{c.text}</span>
                                 </p>
-                                <p className="mt-0.5 text-[10px] text-white/25">{new Date(c.createdAt).toLocaleDateString("es-CL")}</p>
+                                <p className="mt-0.5 text-[10px] text-white/25">{new Date(c.createdAt).toLocaleDateString("es-MX")}</p>
                               </div>
                               {me?.user?.id === c.user.id && (
                                 <button
@@ -649,7 +649,7 @@ export default function ExplorePage() {
                         <p className="text-[11px] text-white/30 flex items-center gap-1">
                           <Users className="h-2.5 w-2.5" /> {c.subscriberCount}
                           {c.monthlyPriceCLP ? (
-                            <span className="ml-1 text-[#00aff0]/80">· ${c.monthlyPriceCLP.toLocaleString("es-CL")}/mes</span>
+                            <span className="ml-1 text-[#00aff0]/80">· ${c.monthlyPriceCLP.toLocaleString("es-MX")}/mes</span>
                           ) : null}
                         </p>
                       </div>

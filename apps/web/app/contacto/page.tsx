@@ -169,8 +169,8 @@ export default function ContactoPage() {
 
       <div className="mt-6 text-center text-xs text-white/30">
         También puedes escribirnos directamente a{" "}
-        <a href="mailto:contacto@uzeed.cl" className="text-fuchsia-400/70 hover:text-fuchsia-300">
-          contacto@uzeed.cl
+        <a href="mailto:contacto@uzeed.mx" className="text-fuchsia-400/70 hover:text-fuchsia-300">
+          contacto@uzeed.mx
         </a>
       </div>
     </div>

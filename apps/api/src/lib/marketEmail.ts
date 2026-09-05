@@ -15,7 +15,7 @@ function wrapEmail(title: string, contentRows: string): string {
   <tr><td align="center">
     <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:linear-gradient(135deg,rgba(168,85,247,0.15),rgba(236,72,153,0.1),rgba(59,130,246,0.08));border:1px solid rgba(255,255,255,0.1);border-radius:24px;overflow:hidden;">
       <tr><td align="center" style="padding:40px 30px 20px;">
-        <img src="https://uzeed.cl/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
+        <img src="https://uzeed.mx/brand/isotipo-new.png" alt="UZEED" width="80" height="80" style="display:block;border-radius:20px;" />
       </td></tr>
       <tr><td align="center" style="padding:0 30px 8px;">
         <h1 style="margin:0;font-size:22px;font-weight:700;color:#ffffff;letter-spacing:-0.02em;">${title}</h1>
@@ -23,7 +23,7 @@ function wrapEmail(title: string, contentRows: string): string {
       ${contentRows}
       <tr><td align="center" style="padding:20px 30px;border-top:1px solid rgba(255,255,255,0.06);">
         <p style="margin:0;font-size:11px;color:rgba(255,255,255,0.3);line-height:1.5;">
-          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.cl
+          Este correo fue enviado automáticamente.<br/>&copy; UZEED — uzeed.mx
         </p>
       </td></tr>
     </table>
@@ -64,18 +64,18 @@ function escapeHtml(value: string): string {
 }
 
 function clp(value: number): string {
-  return `$${Math.round(value || 0).toLocaleString("es-CL")}`;
+  return `$${Math.round(value || 0).toLocaleString("es-MX")}`;
 }
 
 function appUrl(path: string): string {
-  return `${(config.appUrl || "https://uzeed.cl").replace(/\/$/, "")}${path}`;
+  return `${(config.appUrl || "https://uzeed.mx").replace(/\/$/, "")}${path}`;
 }
 
 async function send(to: string | null | undefined, subject: string, html: string) {
   if (!config.resendApiKey || !to) return;
   try {
     const resend = new Resend(config.resendApiKey);
-    await resend.emails.send({ from: "UZEED <no-reply@uzeed.cl>", to, subject, html });
+    await resend.emails.send({ from: "UZEED <no-reply@uzeed.mx>", to, subject, html });
   } catch (err) {
     console.error("[marketEmail] failed", { to, subject, err });
   }

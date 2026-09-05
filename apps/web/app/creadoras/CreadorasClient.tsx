@@ -22,7 +22,7 @@ const benefits = [
   },
   {
     title: "Tarifa baja",
-    description: "La comisión más baja del mercado chileno. Te quedas con casi todo.",
+    description: "La comisión más baja del mercado mexicano. Te quedas con casi todo.",
   },
   {
     title: "Feed completo",
@@ -60,7 +60,7 @@ const advantages = [
   {
     number: "03",
     title: "Soporte humano",
-    text: "Un equipo chileno te ayuda por WhatsApp cuando necesites apoyo con tu perfil, pagos o verificación.",
+    text: "Un equipo mexicano te ayuda por WhatsApp cuando necesites apoyo con tu perfil, pagos o verificación.",
   },
 ];
 
@@ -96,10 +96,10 @@ export default function CreadorasClient({ profiles = [] }: { profiles?: PublicPr
           Invitación para creadoras
         </span>
         <h1 className="mt-5 text-3xl font-bold tracking-tight text-white sm:text-5xl">
-          Trabaja con independencia en la plataforma líder de Chile
+          Trabaja con independencia en la plataforma líder de México
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-white/60 sm:text-base">
-          UZEED es la plataforma chilena que reúne directorio de perfiles,
+          UZEED es la plataforma mexicana que reúne directorio de perfiles,
           feed de contenido y suscripciones en un solo lugar. Creas tu perfil,
           publicas tu contenido, decides tus precios y hablas directamente con
           tus clientes. Seguridad, control total y la tarifa más baja del
@@ -188,7 +188,7 @@ export default function CreadorasClient({ profiles = [] }: { profiles?: PublicPr
       <section className="mt-8 grid grid-cols-3 divide-x divide-white/[0.06] rounded-2xl border border-white/[0.08] bg-white/[0.03] py-5 text-center backdrop-blur">
         <div>
           <div className="text-lg font-bold text-white sm:text-2xl">+300</div>
-          <div className="mt-0.5 text-[11px] text-white/50 sm:text-xs">Ciudades en Chile</div>
+          <div className="mt-0.5 text-[11px] text-white/50 sm:text-xs">Ciudades en México</div>
         </div>
         <div>
           <div className="text-lg font-bold text-white sm:text-2xl">Gratis</div>
@@ -243,7 +243,7 @@ export default function CreadorasClient({ profiles = [] }: { profiles?: PublicPr
             Ventajas frente a otras plataformas
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-white/55">
-            Una herramienta chilena, pensada para ti y sin letra chica.
+            Una herramienta mexicana, pensada para ti y sin letra chica.
           </p>
         </header>
 

@@ -21,16 +21,16 @@ const tabsMeta: Array<{ key: TabKey; label: string; icon: string }> = [
 
 function formatDate(iso?: string | null) {
   if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("es-CL");
+  return new Date(iso).toLocaleDateString("es-MX");
 }
 
 function formatDateTime(iso?: string | null) {
   if (!iso) return "Por confirmar";
-  return new Date(iso).toLocaleString("es-CL");
+  return new Date(iso).toLocaleString("es-MX");
 }
 
 function formatMoney(value?: number | null) {
-  return `$${Number(value || 0).toLocaleString("es-CL")}`;
+  return `$${Number(value || 0).toLocaleString("es-MX")}`;
 }
 
 function durationLabel(duration?: string | null) {
@@ -648,7 +648,7 @@ export default function MotelDashboardPage() {
           <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 sm:p-6">
             <h3 className="mb-5 text-lg font-semibold">Configuración de contacto</h3>
             <div className="space-y-4">
-              <GlassInput label="Teléfono de contacto" placeholder="+56 9 1234 5678" value={profileDraft.phone} onChange={(e) => setProfileDraft((p) => ({ ...p, phone: e.target.value }))} />
+              <GlassInput label="Teléfono de contacto" placeholder="+52 55 1234 5678" value={profileDraft.phone} onChange={(e) => setProfileDraft((p) => ({ ...p, phone: e.target.value }))} />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <button
@@ -761,7 +761,7 @@ export default function MotelDashboardPage() {
               <GlassInput label="Amenidades (separadas por coma)" placeholder="WiFi, Jacuzzi, TV, Minibar..." value={roomForm.amenities} onChange={(e) => setRoomForm((f: any) => ({ ...f, amenities: e.target.value }))} />
 
               <div>
-                <span className="mb-1.5 block text-xs font-medium text-white/50">Tarifas (CLP)</span>
+                <span className="mb-1.5 block text-xs font-medium text-white/50">Tarifas (MXN)</span>
                 <div className="grid grid-cols-3 gap-2">
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-center">
                     <div className="mb-1 text-[10px] font-medium text-white/40">3 HORAS</div>
@@ -926,7 +926,7 @@ export default function MotelDashboardPage() {
                     <input className="w-full bg-transparent text-lg font-bold text-white outline-none" placeholder="0" value={promoForm.discountPercent} onChange={(e) => setPromoForm((f: any) => ({ ...f, discountPercent: e.target.value }))} />
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-                    <div className="mb-1 text-[10px] font-medium text-white/40">MONTO FIJO (CLP)</div>
+                    <div className="mb-1 text-[10px] font-medium text-white/40">MONTO FIJO (MXN)</div>
                     <input className="w-full bg-transparent text-lg font-bold text-white outline-none" placeholder="0" value={promoForm.discountClp} onChange={(e) => setPromoForm((f: any) => ({ ...f, discountClp: e.target.value }))} />
                   </div>
                 </div>
@@ -1166,7 +1166,7 @@ export default function MotelDashboardPage() {
                 {agendaItems.map((b: any) => (
                   <div key={`agenda-${b.id}`} className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] p-3">
                     <div className="text-center">
-                      <div className="text-lg font-bold">{new Date(b.startAt).toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" })}</div>
+                      <div className="text-lg font-bold">{new Date(b.startAt).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</div>
                       <div className="text-[10px] text-white/30">{durationLabel(b.durationType)}</div>
                     </div>
                     <div className="h-8 w-px bg-white/10" />

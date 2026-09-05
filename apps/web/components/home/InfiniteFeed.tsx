@@ -72,7 +72,7 @@ export default function InfiniteFeed({
     if (title) return title;
     if (selectedCity?.name) return `Escorts en ${selectedCity.name}`;
     if (effectiveLoc) return "Escorts cerca de ti";
-    return "Escorts en todo Chile";
+    return "Escorts en todo México";
   }, [title, selectedCity?.name, effectiveLoc]);
 
   const [items, setItems] = useState<DirectoryResult[]>([]);
@@ -112,10 +112,10 @@ export default function InfiniteFeed({
           // Wide radius so empty regions still show closest profiles.
           params.set("radiusKm", "2000");
         }
-        // Con una comuna elegida en el chip, la distancia se mide contra su
+        // Con una ciudad elegida en el chip, la distancia se mide contra su
         // centro: una vecina puede quedar más cerca de ese punto que un perfil
-        // del otro extremo de la misma comuna. El nombre le dice a la API que
-        // ponga primero los de la comuna y después el resto por cercanía.
+        // del otro extremo de la misma ciudad. El nombre le dice a la API que
+        // ponga primero los de la ciudad y después el resto por cercanía.
         if (selectedCityName) params.set("city", selectedCityName);
         const data = await apiFetch<SearchResponse>(
           `/directory/search?${params.toString()}`,

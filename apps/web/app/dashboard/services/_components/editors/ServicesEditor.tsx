@@ -146,7 +146,7 @@ export default function ServicesEditor({
               setField("serviceAddress", v);
               setField("serviceVerified", false);
             }}
-            placeholder="Ej: Av. Providencia 1234, Santiago"
+            placeholder="Ej: Av. Insurgentes Sur 1234, CDMX"
           />
 
           <div className="flex flex-wrap items-center gap-2">

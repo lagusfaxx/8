@@ -14,7 +14,7 @@ export default function ProfileServerView({
   canonicalUrl: string;
 }) {
   const name = profile.name || "Profesional";
-  const city = profile.city || "Chile";
+  const city = profile.city || "México";
   const category = (profile.serviceCategory || "Escort").trim();
 
   const jsonLd = {
