@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     apple: [{ url: '/brand/isotipo-new.png', sizes: '720x720', type: 'image/png' }]
   },
   other: {
-    'google-site-verification': 'google73ed8440237def39',
+    'google-site-verification': 'rWT2YPPgP-FkEgWFPr5d0JDFw_u7jvemWDshXKOxMJs',
     // Clasificación explícita para contenido adulto: coherente con SafeSearch
     // y recomendada por Google para este tipo de sitios.
     rating: 'adult',
